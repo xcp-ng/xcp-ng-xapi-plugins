@@ -17,7 +17,7 @@ ssh ${MASTER_HOST} xe vm-start vm=${VM_HOST_UNDER_TEST_UUID}
 until ping -c1 ${XCP_HOST_UNDER_TEST_IP} &>/dev/null; do :; done
 sleep 20
 rsync -v  --exclude '.*' -r ${ARTIFACT} ${XCP_HOST_UNDER_TEST}:
-ssh ${XCP_HOST_UNDER_TEST} rpm -i ${ARTIFACT}
+ssh ${XCP_HOST_UNDER_TEST} yum install -y ${ARTIFACT}
 sleep 10
 ssh ${XCP_HOST_UNDER_TEST} xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=check_update
 ssh ${XCP_HOST_UNDER_TEST} xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=update
