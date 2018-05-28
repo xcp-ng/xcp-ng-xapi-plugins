@@ -18,7 +18,11 @@ ENABLE_DEV_LOGGING_FILE = "/opt/xensource/packages/files/updater/devlogging_enab
 
 
 def display_package(p):
-    return {'name': p.name, 'version': p.version, 'release': p.release, 'arch': p.arch, 'fullName': p.ui_envra}
+    if p.changelog:
+      changelog = p.changelog[0]
+    else:
+      changelog = p.changelog
+    return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary, 'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license }
 
 
 def run_command(command):
@@ -39,7 +43,7 @@ def check_update(session, args):
     yum_instance.populateTs(keepold=0)
     yum_instance.ts.check()  # required for ordering
     yum_instance.ts.order()
-    return json.dumps({'result': map(display_package, packages)})
+    return json.dumps(map(display_package, packages))
 
 
 def update(session, args):
