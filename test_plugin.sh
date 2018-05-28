@@ -3,17 +3,21 @@
 set -ex
 
 MASTER_HOST=root@192.168.100.11
-XCP_HOST_UNDER_TEST=root@192.168.100.187
-SNAPSHOT_UUID=581cdbe3-5fc1-695c-d2ba-c73cbf4ea24f
-VM_HOST_UNDER_TEST_UUID=58b2d434-b3d3-d607-dde9-7a0f69201c08
-HOST_UNDER_TEST_UUID=83e9bfc6-cfc3-4873-9f6b-b8df6d89e87a
+SNAPSHOT_UUID=7ae9921d-d0db-c87c-ea7c-b3450fe8eeeb
+VM_HOST_UNDER_TEST_UUID=13ec74c2-9b57-a327-962f-1ebd9702eec4
+HOST_UNDER_TEST_UUID=05c61e28-11cf-4131-b645-a0be7637c044
+XCP_HOST_UNDER_TEST_IP=192.168.100.151
+XCP_HOST_UNDER_TEST=root@${XCP_HOST_UNDER_TEST_IP}
+
+VERSION=1.1
+ARTIFACT=xcp-ng-updater_${VERSION}.rpm
 
 ssh ${MASTER_HOST} xe snapshot-revert snapshot-uuid=${SNAPSHOT_UUID}
 ssh ${MASTER_HOST} xe vm-start vm=${VM_HOST_UNDER_TEST_UUID}
-until ping -c1 192.168.100.187 &>/dev/null; do :; done
+until ping -c1 ${XCP_HOST_UNDER_TEST_IP} &>/dev/null; do :; done
 sleep 20
-rsync -v  --exclude '.*' -r xcp-ng-updater_1.0.rpm ${XCP_HOST_UNDER_TEST}:
-ssh ${XCP_HOST_UNDER_TEST} rpm -i xcp-ng-updater_1.0.rpm
+rsync -v  --exclude '.*' -r ${ARTIFACT} ${XCP_HOST_UNDER_TEST}:
+ssh ${XCP_HOST_UNDER_TEST} rpm -i ${ARTIFACT}
 sleep 10
 ssh ${XCP_HOST_UNDER_TEST} xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=check_update
 ssh ${XCP_HOST_UNDER_TEST} xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=update

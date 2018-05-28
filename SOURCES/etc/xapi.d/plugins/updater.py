@@ -18,11 +18,12 @@ ENABLE_DEV_LOGGING_FILE = "/opt/xensource/packages/files/updater/devlogging_enab
 
 
 def display_package(p):
-    if p.changelog:
-      changelog = p.changelog[0]
+    if len(p.changelog):
+        changelog = {'timestamp': p.changelog[0][0], 'name': p.changelog[0][1], 'text': p.changelog[0][2]}
     else:
-      changelog = p.changelog
-    return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary, 'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license }
+        changelog = None
+    return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
+            'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
 
 def run_command(command):
