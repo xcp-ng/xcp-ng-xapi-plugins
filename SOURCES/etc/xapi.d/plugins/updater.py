@@ -54,6 +54,23 @@ def update(session, args):
         command.append(packages)
     return json.dumps(run_command(command))
 
+def check_upgrade(session, args):
+    # TODO:
+    # check new version exists
+    # show release notes to user
+    # check for available space
+
+    pass
+
+def upgrade():
+    # TODO
+    # check for available space
+    # edit yum configuration
+    # yum clean metadata
+    # upgrade
+    # report/diagnostic
+    pass
+
 
 def handle_unhandled_exceptions(exception_type, exception_value,
                                 exception_traceback):
