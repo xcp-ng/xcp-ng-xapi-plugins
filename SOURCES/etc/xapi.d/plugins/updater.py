@@ -64,6 +64,9 @@ def check_upgrade(session, args):
 
 def upgrade():
     # TODO
+    # check checksum of repo file (and probably in the future check its signature)
+    # find a way to handle ".rpmnew" files that may have been created by the upgrade (stands true for any update actually)
+    # Warning about .rpmsave
     # check for available space
     # edit yum configuration
     # yum clean metadata
