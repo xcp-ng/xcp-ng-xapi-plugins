@@ -9,6 +9,7 @@ import XenAPIPlugin
 import logging
 import logging.handlers
 import yum
+import ConfigParser
 import json
 
 import signal
@@ -54,6 +55,7 @@ def update(session, args):
         command.append(packages)
     return json.dumps(run_command(command))
 
+
 def check_upgrade(session, args):
     # TODO:
     # check new version exists
@@ -61,6 +63,7 @@ def check_upgrade(session, args):
     # check for available space
 
     pass
+
 
 def upgrade():
     # TODO
@@ -73,6 +76,58 @@ def upgrade():
     # upgrade
     # report/diagnostic
     pass
+
+
+CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
+
+
+# returns a JSON dict {repo_id: proxy}
+def get_proxies(session, args):
+    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config.read(CONFIGURATION_FILE)
+    new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
+    return json.dumps(new_dict)
+
+
+# expects a JSON dict in a 'proxies' argument. The dict should be of the form {repo_id: proxy} with the special proxy
+# '_none_' used for removal.
+# example: {"xcp-ng-base": "http://192.168.100.82:3142"}
+# returns a JSON dict like that: {"status": true} or like that: {"status": false, "error": "Unexpected URL \"https://updates.xcp-ng.org/7/7.6/updates/x86_64/\" for proxy \"_none_\" in section \"xcp-ng-updates\""}
+
+def set_proxies(session, args):
+    # '{"xcp-ng-base": "http://192.168.100.82:3142"}'
+    # '{"xcp-ng-base": "_none_"}'
+    try :
+        special_url_prefix = 'http://HTTPS///'
+        https_url_prefix = 'https://'
+        proxies = json.loads(args['proxies'])
+        config = ConfigParser.ConfigParser()
+        if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
+            return json.dumps({'status': False, 'error': 'could not read file %s' % CONFIGURATION_FILE})
+        for section in proxies:
+            if config.has_section(section):
+                # idempotence
+                if proxies[section] == '_none_' and not config.has_option(section, 'proxy'):
+                    continue
+                if config.has_option(section, 'proxy') and config.get(section, 'proxy') == proxies[section]:
+                    continue
+                config.set(section, 'proxy', proxies[section])
+                url = config.get(section, 'baseurl')
+                if proxies[section] == '_none_' and url.startswith(special_url_prefix):
+                    config.set(section, 'baseurl', https_url_prefix + url[len(special_url_prefix):])
+                elif proxies[section] != '_none_' and url.startswith(https_url_prefix):
+                    config.set(section, 'baseurl', special_url_prefix + url[len(https_url_prefix):])
+                else:
+                    return json.dumps({'status': False,
+                                       'error': 'Unexpected URL "%s" for proxy "%s" in section "%s"' % (
+                                           url, proxies[section], section)})
+            else:
+                return json.dumps({'status': False, 'error': 'Can\'t find section "%s" in config file' % section})
+        with open(CONFIGURATION_FILE, 'wb') as configfile:
+            config.write(configfile)
+        return json.dumps({'status': True})
+    except :
+        return json.dumps({'status': False, 'error': traceback.format_exc()})
 
 
 def handle_unhandled_exceptions(exception_type, exception_value,
@@ -125,5 +180,7 @@ sys.excepthook = handle_unhandled_exceptions
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
         'check_update': check_update,
-        'update': update
+        'update': update,
+        'get_proxies': get_proxies,
+        'set_proxies': set_proxies
     })
