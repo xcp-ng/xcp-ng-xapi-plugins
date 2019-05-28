@@ -1,8 +1,23 @@
-# XCP-ng updater
+# XCP-ng xapi plugins
+
+## XCP-ng ZFS pool list
+
+A xapi plugin to discover ZFS pools present on the host.
+
+### Example
+```
+$ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=zfs.py fn=list_zfs_pools
+{"tank": {"setuid": "on", "relatime": "off", "referenced": "24K", "written": "24K", "zoned": "off", "primarycache": "all", "logbias": "latency", "creation": "Mon May 27 17:24 2019", "sync": "standard", "snapdev": "hidden", "dedup": "off", "sharenfs": "off", "usedbyrefreservation": "0B", "sharesmb": "off", "createtxg": "1", "canmount": "on", "mountpoint": "/tank", "casesensitivity": "sensitive", "utf8only": "off", "xattr": "on", "dnodesize": "legacy", "mlslabel": "none", "objsetid": "54", "defcontext": "none", "rootcontext": "none", "mounted": "yes", "compression": "off", "overlay": "off", "logicalused": "126K", "usedbysnapshots": "0B", "filesystem_count": "none", "copies": "1", "snapshot_limit": "none", "aclinherit": "restricted", "compressratio": "1.00x", "readonly": "off", "version": "5", "normalization": "none", "filesystem_limit": "none", "type": "filesystem", "secondarycache": "all", "refreservation": "none", "available": "17.4G", "used": "364K", "exec": "on", "refquota": "none", "refcompressratio": "1.00x", "quota": "none", "keylocation": "none", "snapshot_count": "none", "fscontext": "none", "vscan": "off", "reservation": "none", "atime": "on", "recordsize": "128K", "usedbychildren": "340K", "usedbydataset": "24K", "guid": "656061077639704004", "pbkdf2iters": "0", "checksum": "on", "special_small_blocks": "0", "redundant_metadata": "all", "volmode": "default", "devices": "on", "keyformat": "none", "logicalreferenced": "12K", "acltype": "off", "nbmand": "off", "context": "none", "encryption": "off", "snapdir": "hidden"}}
+
+```
+(the most pertinent parameter is `mountpoint`)
+
+
+## XCP-ng updater
 
 A xapi plugin to invoke yum commands on the hosts.
 
-## Examples
+### Examples
 
 Checking for updates:
 
@@ -19,9 +34,9 @@ $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=che
 $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=update
 ```
 
-## Proxy configuration
+### Proxy configuration
 
-### `get_proxies()`:
+#### `get_proxies()`:
 
 ```
 $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=get_proxies
@@ -31,7 +46,7 @@ $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=get
 The answer is a JSON dict section -> proxy. The dict is empty if the file couldn't be read.
  
 
-### `set_proxies(proxies)`:
+#### `set_proxies(proxies)`:
 
 ```
 $ echo $JSON_PROXY
