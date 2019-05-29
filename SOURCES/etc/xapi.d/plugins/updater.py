@@ -10,7 +10,7 @@ import ConfigParser
 import json
 
 sys.path.append('.')
-from vatesutils import configure_logging
+from xcpngutils import configure_logging
 
 
 def display_package(p):

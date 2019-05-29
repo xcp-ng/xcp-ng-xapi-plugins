@@ -9,7 +9,7 @@ import sys
 import XenAPIPlugin
 
 sys.path.append('.')
-from vatesutils import configure_logging
+from xcpngutils import configure_logging
 
 # returns a JSON dict {<poolname>: {mountpoint: <mountpoint>, ...}}
 # xe host-call-plugin host-uuid=<UUID> plugin=zfs.py fn=list_zfs_pools
