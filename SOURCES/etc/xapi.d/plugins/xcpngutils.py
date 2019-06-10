@@ -6,6 +6,7 @@ import os
 import sys
 import traceback
 import signal
+import subprocess
 
 
 def configure_logging(name):
@@ -55,3 +56,10 @@ def configure_logging(name):
     sys.excepthook = handle_unhandled_exceptions
     signal.signal(signal.SIGPIPE, signal.SIG_DFL)
     return logger
+
+
+def run_command(command):
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    result = {'exit': process.returncode, 'stdout': stdout, 'stderr': stderr, 'command': command}
+    return result
