@@ -12,20 +12,11 @@ sys.path.append('.')
 from xcpngutils import configure_logging, run_command
 
 
-# returns a JSON dict {<poolname>: {mountpoint: <mountpoint>, ...}}
-# xe host-call-plugin host-uuid=<UUID> plugin=zfs.py fn=list_zfs_pools
 def get_hyperthreading(session, args):
-    try:
-        result = run_command(['xl', 'info', 'threads_per_core'])
-        _LOGGER.info(result)
-        lines = result['stdout'].splitlines()
-
-        return json.dumps(int(lines[0]) > 1)
-    except OSError as e:
-        if e.errno == errno.ENOENT:
-            return json.dumps({})
-        else:
-            raise e
+    result = run_command(['xl', 'info', 'threads_per_core'])
+    _LOGGER.info(result)
+    lines = result['stdout'].splitlines()
+    return json.dumps(int(lines[0]) > 1)
 
 
 _LOGGER = configure_logging('pyperthreading')
