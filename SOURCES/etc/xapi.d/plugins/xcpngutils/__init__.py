@@ -1,13 +1,13 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+from contextlib import contextmanager
 import logging
 import logging.handlers
 import os
-import sys
-import traceback
 import signal
 import subprocess
-
+import sys
+import traceback
 
 def configure_logging(name):
     log_file = "/var/log/" + name + "-plugin.log"
@@ -63,3 +63,18 @@ def run_command(command):
     stdout, stderr = process.communicate()
     result = {'exit': process.returncode, 'stdout': stdout, 'stderr': stderr, 'command': command}
     return result
+
+
+@contextmanager
+def timeout(seconds):
+    def handler(signum, frame):
+        pass
+
+    oldHandler = signal.signal(signal.SIGALRM, handler)
+
+    try:
+        signal.alarm(seconds)
+        yield
+    finally:
+        signal.alarm(0)
+        signal.signal(signal.SIGALRM, oldHandler)

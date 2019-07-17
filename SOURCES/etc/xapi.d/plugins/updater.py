@@ -1,16 +1,91 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
+from functools import wraps
+import ConfigParser
+import json
+import os
 import subprocess
 import sys
 import traceback
 import XenAPIPlugin
 import yum
-import ConfigParser
-import json
 
 sys.path.append('.')
-from xcpngutils import configure_logging
+from xcpngutils import configure_logging, run_command
+from xcpngutils.filelocker import FileLocker
+
+
+REPOS = ('xcp-ng-base', 'xcp-ng-updates')
+
+
+class OperationException(Exception):
+    pass
+
+class OperationLocker(FileLocker):
+    __slots__ = ('operation', 'current_operation')
+
+    def __init__(self, operation, timeout=0):
+        super(OperationLocker, self).__init__(
+            timeout=timeout,
+            auto_remove=False,
+            dir='/var/lib/xcp-ng-xapi-plugins/'
+        )
+        self.operation = operation
+
+    def _raise_busy(self):
+        raise OperationException('The updater plugin is busy (current operation: {})'.format(self.current_operation))
+
+    def _prelock(self):
+        # 1. Read the current operation from lockfile before timeout or direct lock call.
+        self.current_operation = None
+        try:
+            self.file.seek(0)
+            self.current_operation = self.file.readline().rstrip('\n')
+        except:
+            pass
+
+        # 2. If there is no current operation, it's ok we can try to lock the file.
+        if not self.current_operation:
+            return
+
+        # 3. At this point a current operation is running, so:
+        # - If the operation to execute is not 'update', a busy exception is thrown.
+        # - If the next op is 'update' and the current op is the same, an 'already in progress' exception is thrown.
+        # - More precisely, there is only a unique valid case to pass this point => The next op is 'update' and
+        #   the previous op is different.
+        self_is_update = self.operation == 'update'
+        if self_is_update and self.operation == self.current_operation:
+            raise OperationException('Update already in progress')
+        elif not self_is_update:
+            self._raise_busy()
+
+    def _timeout_reached(self):
+        self._raise_busy()
+
+    def _locked(self):
+        self.file.seek(0)
+        self.file.truncate()
+        self.file.write('{}\n'.format(self.operation))
+        self.file.flush()
+
+    def _unlocked(self):
+        self.file.seek(0)
+        self.file.truncate()
+        self.file.flush()
+
+def operationlock(*pid_args, **pid_kwargs):
+    def wrapper(func):
+        @wraps(func)
+        def decorator(*args, **kwargs):
+            try:
+                pid_kwargs['operation'] = func.__name__
+                with OperationLocker(*pid_args, **pid_kwargs):
+                    return func(*args, **kwargs)
+            except Exception as e:
+                return json.dumps({'error': str(e)})
+        return decorator
+    return wrapper
 
 
 def display_package(p):
@@ -22,18 +97,13 @@ def display_package(p):
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
 
-def run_command(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    result = {'exit': process.returncode, 'stdout': stdout, 'stderr': stderr, 'command': command}
-    _LOGGER.info(result)
-    return result
-
-
+@operationlock()
 def check_update(session, args):
     yum_instance = yum.YumBase()
     yum_instance.preconf.debuglevel = 0
     yum_instance.preconf.plugins = True
+    yum_instance.repos.disableRepo('*')
+    yum_instance.repos.enableRepo(','.join(REPOS))
     packages = yum_instance.doPackageLists(pkgnarrow='updates')
     del yum_instance.ts
     yum_instance.initActionTs()  # make a new, blank ts to populate
@@ -43,9 +113,10 @@ def check_update(session, args):
     return json.dumps(map(display_package, packages))
 
 
+@operationlock(timeout=10)
 def update(session, args):
     packages = args.get('packages')
-    command = ['yum', 'update', '-y']
+    command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
     if packages:
         command.append(packages)
     return json.dumps(run_command(command))
@@ -56,6 +127,7 @@ def check_upgrade(session, args):
     # check new version exists
     # show release notes to user
     # check for available space
+    # protect it with operationlock
 
     pass
 
@@ -70,6 +142,8 @@ def upgrade():
     # yum clean metadata
     # upgrade
     # report/diagnostic
+    # protect it with operationlock
+
     pass
 
 
@@ -77,6 +151,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 
 
 # returns a JSON dict {repo_id: proxy}
+@operationlock()
 def get_proxies(session, args):
     config = ConfigParser.ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
@@ -89,6 +164,7 @@ def get_proxies(session, args):
 # example: {"xcp-ng-base": "http://192.168.100.82:3142"}
 # returns a JSON dict like that: {"status": true} or like that: {"status": false, "error": "Unexpected URL \"https://updates.xcp-ng.org/7/7.6/updates/x86_64/\" for proxy \"_none_\" in section \"xcp-ng-updates\""}
 
+@operationlock()
 def set_proxies(session, args):
     # '{"xcp-ng-base": "http://192.168.100.82:3142"}'
     # '{"xcp-ng-base": "_none_"}'
