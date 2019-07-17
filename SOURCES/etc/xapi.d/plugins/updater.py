@@ -92,7 +92,7 @@ def get_proxies(session, args):
 def set_proxies(session, args):
     # '{"xcp-ng-base": "http://192.168.100.82:3142"}'
     # '{"xcp-ng-base": "_none_"}'
-    try :
+    try:
         special_url_prefix = 'http://HTTPS///'
         https_url_prefix = 'https://'
         proxies = json.loads(args['proxies'])
@@ -121,7 +121,7 @@ def set_proxies(session, args):
         with open(CONFIGURATION_FILE, 'wb') as configfile:
             config.write(configfile)
         return json.dumps({'status': True})
-    except :
+    except:
         return json.dumps({'status': False, 'error': traceback.format_exc()})
 
 
