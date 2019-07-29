@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+from functools import wraps
 from contextlib import contextmanager
 import logging
 import logging.handlers
@@ -8,6 +10,8 @@ import signal
 import subprocess
 import sys
 import traceback
+import json
+
 
 def configure_logging(name):
     log_file = "/var/log/" + name + "-plugin.log"
@@ -78,3 +82,14 @@ def timeout(seconds):
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, oldHandler)
+
+
+def error_wrapped(func):
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        try:
+            return func(*args, **kwds)
+        except Exception as e:
+            return json.dumps({'status': False, 'message': str(e), 'error': traceback.format_exc()})
+
+    return wrapper
