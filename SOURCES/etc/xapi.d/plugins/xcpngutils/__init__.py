@@ -12,6 +12,8 @@ import sys
 import traceback
 import json
 
+import XenAPIPlugin
+
 
 def configure_logging(name):
     log_file = "/var/log/" + name + "-plugin.log"
@@ -89,7 +91,9 @@ def error_wrapped(func):
     def wrapper(*args, **kwds):
         try:
             return func(*args, **kwds)
+        except EnvironmentError as e:
+            raise XenAPIPlugin.Failure(str(e.errno), [e.strerror, str(e.filename), traceback.format_exc()])
         except Exception as e:
-            return json.dumps({'status': False, 'message': str(e), 'error': traceback.format_exc()})
+            raise XenAPIPlugin.Failure('-1', [str(e), '', traceback.format_exc()])
 
     return wrapper
