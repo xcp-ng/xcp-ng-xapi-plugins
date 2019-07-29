@@ -86,14 +86,21 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, oldHandler)
 
 
+def answer_error(code, message, details='', backtrace=''):
+    raise XenAPIPlugin.Failure(code, [message, details, backtrace])
+
+
 def error_wrapped(func):
     @wraps(func)
     def wrapper(*args, **kwds):
         try:
             return func(*args, **kwds)
+        except XenAPIPlugin.Failure as e:
+            # pass through what was already handled
+            raise e
         except EnvironmentError as e:
-            raise XenAPIPlugin.Failure(str(e.errno), [e.strerror, str(e.filename), traceback.format_exc()])
+            answer_error(str(e.errno), e.strerror, str(e.filename), traceback.format_exc())
         except Exception as e:
-            raise XenAPIPlugin.Failure('-1', [str(e), '', traceback.format_exc()])
+            answer_error('-1', str(e), backtrace=traceback.format_exc())
 
     return wrapper
