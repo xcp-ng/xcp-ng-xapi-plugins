@@ -86,7 +86,7 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, oldHandler)
 
 
-def answer_error(code, message, details='', backtrace=''):
+def raise_plugin_error(code, message, details='', backtrace=''):
     raise XenAPIPlugin.Failure(code, [message, details, backtrace])
 
 
