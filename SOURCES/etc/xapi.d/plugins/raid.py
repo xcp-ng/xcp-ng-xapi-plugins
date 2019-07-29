@@ -24,7 +24,7 @@ class OperationLocker(FileLocker):
             raise Exception('The plugin is busy.')
 
 
-# returns {"status": true, "raid": {"State": "clean", (...)}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], (...)]}
+# returns {"status": true, "result": {"raid": {"State": "clean", (...)}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], (...)]}}
 @error_wrapped
 def check_raid_pool(session, args):
     device = '/dev/md127'
