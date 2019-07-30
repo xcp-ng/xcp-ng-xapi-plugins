@@ -1,12 +1,11 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from functools import wraps
+import json
 import sys
 import traceback
-import json
-
 import XenAPIPlugin
+from functools import wraps
 
 sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
@@ -40,7 +39,7 @@ def check_raid_pool(session, args):
         # '1       8       16        1      active sync   /dev/sdb' -> ["1", "8", "16", "1", "active sync", "/dev/sdb"]
         volumes = [[field.strip() for field in line.split('  ') if len(field.strip()) > 0] for line in
                    lines[footer_index + 1:]]
-        # 'Version : 1.0' -> {"Version ": " 1.0"}
+        # 'Version : 1.0' -> {"Version": "1.0"}
         lines = dict([[element.strip() for element in line.split(' : ', 1)] for line in lines[0:footer_index]])
         return json.dumps({'status': True, 'result': {'raid': lines, 'volumes': volumes}})
 

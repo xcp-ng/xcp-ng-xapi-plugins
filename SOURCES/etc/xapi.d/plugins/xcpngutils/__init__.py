@@ -1,8 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from functools import wraps
-from contextlib import contextmanager
+import json
 import logging
 import logging.handlers
 import os
@@ -10,9 +9,9 @@ import signal
 import subprocess
 import sys
 import traceback
-import json
-
 import XenAPIPlugin
+from contextlib import contextmanager
+from functools import wraps
 
 
 def configure_logging(name):
@@ -99,8 +98,8 @@ def error_wrapped(func):
             # pass through what was already handled
             raise e
         except EnvironmentError as e:
-            answer_error(str(e.errno), e.strerror, str(e.filename), traceback.format_exc())
+            raise_plugin_error(str(e.errno), e.strerror, str(e.filename), traceback.format_exc())
         except Exception as e:
-            answer_error('-1', str(e), backtrace=traceback.format_exc())
+            raise_plugin_error('-1', str(e), backtrace=traceback.format_exc())
 
     return wrapper
