@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-from contextlib import contextmanager
+
+import json
 import logging
 import logging.handlers
 import os
@@ -8,6 +9,10 @@ import signal
 import subprocess
 import sys
 import traceback
+import XenAPIPlugin
+from contextlib import contextmanager
+from functools import wraps
+
 
 def configure_logging(name):
     log_file = "/var/log/" + name + "-plugin.log"
@@ -78,3 +83,23 @@ def timeout(seconds):
     finally:
         signal.alarm(0)
         signal.signal(signal.SIGALRM, oldHandler)
+
+
+def raise_plugin_error(code, message, details='', backtrace=''):
+    raise XenAPIPlugin.Failure(code, [message, details, backtrace])
+
+
+def error_wrapped(func):
+    @wraps(func)
+    def wrapper(*args, **kwds):
+        try:
+            return func(*args, **kwds)
+        except XenAPIPlugin.Failure as e:
+            # pass through what was already handled
+            raise e
+        except EnvironmentError as e:
+            raise_plugin_error(str(e.errno), e.strerror, str(e.filename), traceback.format_exc())
+        except Exception as e:
+            raise_plugin_error('-1', str(e), backtrace=traceback.format_exc())
+
+    return wrapper

@@ -12,6 +12,13 @@ $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=zfs.py fn=list_zf
 ```
 (the most pertinent parameter is `mountpoint`)
 
+## XCP-ng RAID status check
+### Example
+```
+$ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=raid.py fn=check_raid_pool
+{"status": true, "result": {"raid": {"Working Devices": "2", "Raid Devices": "2", "Raid Level": "raid1", "Creation Time": "Wed Jul 17 13:29:42 2019", "Used Dev Size": "52428672 (50.00 GiB 53.69 GB)", "UUID": "1766eb6e:85762159:4c98b42e:2da92c97", "Array Size": "52428672 (50.00 GiB 53.69 GB)", "Failed Devices": "0", "State": "clean", "Version": "1.0", "Events": "44", "Persistence": "Superblock is persistent", "Spare Devices": "0", "Name": "localhost:127", "Active Devices": "2", "Total Devices": "2", "Update Time": "Tue Jul 30 01:58:48 2019"}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], ["1", "8", "16", "1", "active sync", "/dev/sdb"]]}}
+```
+
 
 ## XCP-ng updater
 
