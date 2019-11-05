@@ -98,7 +98,8 @@ def error_wrapped(func):
             # pass through what was already handled
             raise e
         except EnvironmentError as e:
-            raise_plugin_error(str(e.errno), e.strerror, str(e.filename), traceback.format_exc())
+            message = e.strerror if e.strerror is not None else str(e.args)
+            raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()])
         except Exception as e:
             raise_plugin_error('-1', str(e), backtrace=traceback.format_exc())
 
