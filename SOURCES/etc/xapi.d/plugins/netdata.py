@@ -16,7 +16,7 @@ import XenAPIPlugin
 from urlparse import urlparse
 
 sys.path.append('.')
-from xcpngutils import configure_logging, error_wrapped, install_package, run_command
+from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 
 
@@ -28,6 +28,24 @@ class OperationLocker(FileLocker):
         except Exception:
             raise Exception('The plugin is busy.')
 
+
+netdata_config_content = '''
+# netdata configuration
+# do not edit, managed by XCP-ng
+
+[global]
+    memory mode = none
+    run as user = netdata
+    history = 7200
+    bind to = localhost
+[web]
+    mode = none
+    web files owner = root
+    web files group = root
+    default port = 19999
+    bind to = localhost
+    allow netdata.conf from = localhost
+'''
 
 netdata_streaming_content = '''
 # do not edit, managed by XCP-ng
@@ -53,14 +71,21 @@ def install_netdata(session, args):
     destination = args['destination']
     with OperationLocker():
         temp_dir = tempfile.mkdtemp()
+        files = []
         try:
-            install_package('netdata')
-            with open("/etc/netdata/stream.conf", "w") as conf_file:
-                conf_file.write(
-                    netdata_streaming_content.format(destination, api_key))
-            result = run_command(['service', 'netdata', 'restart'])
+            command = ['yum', 'install', '-y', 'netdata', '--enablerepo=xcp-ng-testing']
+            result = run_command(command)
             if result['exit'] == 0:
-                return json.dumps(True)
+                with open("/etc/netdata/netdata.conf", "w") as conf_file:
+                    conf_file.write(netdata_config_content)
+                with open("/etc/netdata/stream.conf", "w") as conf_file:
+                    conf_file.write(
+                        netdata_streaming_content.format(destination, api_key))
+                result2 = run_command(['service', 'netdata', 'restart'])
+                if result2['exit'] == 0:
+                    return json.dumps(True)
+                else:
+                    raise Exception(result2)
             else:
                 raise Exception(result)
         finally:
