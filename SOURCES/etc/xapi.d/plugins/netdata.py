@@ -29,24 +29,6 @@ class OperationLocker(FileLocker):
             raise Exception('The plugin is busy.')
 
 
-netdata_config_content = '''
-# netdata configuration
-# do not edit, managed by XCP-ng
-
-[global]
-    memory mode = none
-    run as user = netdata
-    history = 7200
-    bind to = localhost
-[web]
-    mode = none
-    web files owner = root
-    web files group = root
-    default port = 19999
-    bind to = localhost
-    allow netdata.conf from = localhost
-'''
-
 netdata_streaming_content = '''
 # do not edit, managed by XCP-ng
 
@@ -76,8 +58,6 @@ def install_netdata(session, args):
             command = ['yum', 'install', '-y', 'netdata', '--enablerepo=xcp-ng-testing']
             result = run_command(command)
             if result['exit'] == 0:
-                with open("/etc/netdata/netdata.conf", "w") as conf_file:
-                    conf_file.write(netdata_config_content)
                 with open("/etc/netdata/stream.conf", "w") as conf_file:
                     conf_file.write(
                         netdata_streaming_content.format(destination, api_key))
