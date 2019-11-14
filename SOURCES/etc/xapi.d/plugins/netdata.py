@@ -16,7 +16,7 @@ import XenAPIPlugin
 from urlparse import urlparse
 
 sys.path.append('.')
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, error_wrapped, install_package, run_command
 from xcpngutils.filelocker import FileLocker
 
 
@@ -53,21 +53,16 @@ def install_netdata(session, args):
     destination = args['destination']
     with OperationLocker():
         temp_dir = tempfile.mkdtemp()
-        files = []
         try:
-            command = ['yum', 'install', '-y', 'netdata', '--enablerepo=xcp-ng-testing']
-            result = run_command(command)
-            if result['exit'] == 0:
-                with open("/etc/netdata/stream.conf", "w") as conf_file:
-                    conf_file.write(
-                        netdata_streaming_content.format(destination, api_key))
-                result2 = run_command(['service', 'netdata', 'restart'])
-                if result2['exit'] == 0:
-                    return json.dumps(True)
-                else:
-                    raise Exception(result2)
+            install_package('netdata')
+            with open("/etc/netdata/stream.conf", "w") as conf_file:
+                conf_file.write(
+                    netdata_streaming_content.format(destination, api_key))
+            result2 = run_command(['service', 'netdata', 'restart'])
+            if result2['exit'] == 0:
+                return json.dumps(True)
             else:
-                raise Exception(result)
+                raise Exception(result2)
         finally:
             shutil.rmtree(temp_dir)
 
