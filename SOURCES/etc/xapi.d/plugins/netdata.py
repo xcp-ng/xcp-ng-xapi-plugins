@@ -58,11 +58,11 @@ def install_netdata(session, args):
             with open("/etc/netdata/stream.conf", "w") as conf_file:
                 conf_file.write(
                     netdata_streaming_content.format(destination, api_key))
-            result2 = run_command(['service', 'netdata', 'restart'])
-            if result2['exit'] == 0:
+            result = run_command(['service', 'netdata', 'restart'])
+            if result['exit'] == 0:
                 return json.dumps(True)
             else:
-                raise Exception(result2)
+                raise Exception(result)
         finally:
             shutil.rmtree(temp_dir)
 
