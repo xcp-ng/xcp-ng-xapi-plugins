@@ -8,7 +8,6 @@ import json
 import os
 import shutil
 import sys
-import tempfile
 import urllib2
 
 import XenAPIPlugin
@@ -52,19 +51,15 @@ def install_netdata(session, args):
     api_key = args['api_key']
     destination = args['destination']
     with OperationLocker():
-        temp_dir = tempfile.mkdtemp()
-        try:
-            install_package('netdata')
-            with open("/etc/netdata/stream.conf", "w") as conf_file:
-                conf_file.write(
-                    netdata_streaming_content.format(destination, api_key))
-            result = run_command(['service', 'netdata', 'restart'])
-            if result['exit'] == 0:
-                return json.dumps(True)
-            else:
-                raise Exception(result)
-        finally:
-            shutil.rmtree(temp_dir)
+        install_package('netdata')
+        with open("/etc/netdata/stream.conf", "w") as conf_file:
+            conf_file.write(
+                netdata_streaming_content.format(destination, api_key))
+        result = run_command(['service', 'netdata', 'restart'])
+        if result['exit'] == 0:
+            return json.dumps(True)
+        else:
+            raise Exception(result)
 
 
 @error_wrapped
