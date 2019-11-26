@@ -4,6 +4,7 @@
 # this is a XCP-ng plugin. It goes to /etc/xapi.d/plugins/ with the exec bit set.
 # it expects to have the XCP-ng python xapi plugins library installed. (https://github.com/xcp-ng/xcp-ng-xapi-plugins)
 
+import errno
 import json
 import os
 import shutil
@@ -69,15 +70,22 @@ def is_netdata_installed(session, args):
         return json.dumps(result['exit'] == 0)
 
 
+# returns empty string if no streaming is configured
 @error_wrapped
 def get_netdata_api_key(session, args):
     with OperationLocker():
-        with open("/etc/netdata/stream.conf", "r") as conf_file:
-            content = conf_file.readlines()
-            content = map(lambda line: line.split('#')[0].strip(), content)
-            api_key_line = filter(lambda line: line.startswith('api key'), content)[0]
-            api_key = api_key_line.split('=')[1].strip()
-            return api_key
+        try:
+            with open("/etc/netdata/stream.conf", "r") as conf_file:
+                content = conf_file.readlines()
+                content = map(lambda line: line.split('#')[0].strip(), content)
+                api_key_line = filter(lambda line: line.startswith('api key'), content)[0]
+                api_key = api_key_line.split('=')[1].strip()
+                return api_key
+        except EnvironmentError as e:
+            # if the file doesn't exist, the system is not configured for streaming, return empty string
+            if e.errno == errno.ENOENT:
+                return ''
+            raise e
 
 
 _LOGGER = configure_logging('netdata')
