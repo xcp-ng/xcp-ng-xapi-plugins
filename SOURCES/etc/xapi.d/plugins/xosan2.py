@@ -6,6 +6,7 @@
 
 import json
 import sys
+import shlex
 import traceback
 
 import XenAPIPlugin
@@ -26,13 +27,17 @@ packages = {
     'python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
     'userspace-rcu-0.7.16-1.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=userspace-rcu-0.7.16-1.el7.x86_64.rpm'}
 
+repo_packages = ['attr', 'xfsprogs']
+
 
 # those commands will fail if any of those packages is already present.
 def install_packages(session, args):
-    result = run_command(['yum', 'install', '-y', 'attr'])
+    # REMOVE THIS LINE before merging !!!
+    run_command(['rpm', '-e'] + packages.keys() + repo_packages)
+    # #######
+    result = run_command(['yum', 'install', '-y'] + repo_packages)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    run_command(['rpm', '-e'] + packages.keys())
     result = run_command(['rpm', '-U'] + packages.values())
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
@@ -60,29 +65,32 @@ def probe_peers(session, args):
 
 def format_partition(session, args):
     device = args['device']
-
-    return 'true'
-
-def list_partitions(session, args):
-    result = run_command(['lsblk', '-P', '-b'])
+    force_arg = ['-f'] if 'force' in args and args['force'] == 'true' else []
+    result = run_command(['mkfs.xfs', device] + force_arg)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    # attempt to parse this:
-    # NAME="sr0" MAJ:MIN="11:0" RM="1" SIZE="1073741312" RO="0" TYPE="rom" MOUNTPOINT=""
-    # NAME="sda" MAJ:MIN="8:0" RM="0" SIZE="107374182400" RO="0" TYPE="disk" MOUNTPOINT=""
+    return 'true'
+
+
+def list_partitions(session, args):
+    result = run_command(['lsblk', '-P', '-b', '-o',
+                          'NAME,KNAME,FSTYPE,MOUNTPOINT,LABEL,UUID,PARTUUID,PARTLABEL,RO,RM,MODEL,SERIAL,SIZE,TYPE,VENDOR,PKNAME'])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+        # attempt to parse this:
+        # NAME="sr0" MAJ:MIN="11:0" RM="1" SIZE="1073741312" RO="0" TYPE="rom" MOUNTPOINT=""
+        # NAME="sda" MAJ:MIN="8:0" RM="0" SIZE="107374182400" RO="0" TYPE="disk" MOUNTPOINT=""
     lines = result['stdout'].splitlines()
 
     def parse_line(line):
         res = {}
-        # let's hope there are no wonky spaces or double quote in the chain
-        line.split(' ')
-        for pair in line.split(' '):
+        for pair in shlex.split(line):
             split_pair = pair.split('=')
             res[split_pair[0]] = split_pair[1].strip('\"')
         return res
 
     lines = map(parse_line, lines)
-    return json.dumps(lines)
+    return json.dumps({l['NAME']: l for l in lines})
 
 
 _LOGGER = configure_logging('xosan2')
@@ -90,5 +98,6 @@ if __name__ == "__main__":
     XenAPIPlugin.dispatch({
         'install_packages': install_packages,
         'probe_peers': probe_peers,
-        'list_partitions': list_partitions
+        'list_partitions': list_partitions,
+        'format_partition': format_partition
     })
