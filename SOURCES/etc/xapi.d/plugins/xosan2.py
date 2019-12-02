@@ -50,7 +50,7 @@ def install_packages(session, args):
     result = run_command(['iptables', '-F'])
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    return 'true'
+    return json.dumps(True)
 
 
 # peers is a Json array of string designating machines (ip address or hostname)
@@ -60,7 +60,7 @@ def probe_peers(session, args):
         result = run_command(['gluster', 'peer', 'probe', peer])
         if result['exit'] != 0:
             raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    return 'true'
+    return json.dumps(True)
 
 
 def format_partition(session, args):
@@ -69,7 +69,7 @@ def format_partition(session, args):
     result = run_command(['mkfs.xfs', device] + force_arg)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    return 'true'
+    return json.dumps(True)
 
 
 def list_partitions(session, args):
