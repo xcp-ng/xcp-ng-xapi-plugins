@@ -3,8 +3,10 @@
 
 # this is a XCP-ng plugin. It goes to /etc/xapi.d/plugins/ with the exec bit set.
 # it expects to have the XCP-ng python xapi plugins library installed. (https://github.com/xcp-ng/xcp-ng-xapi-plugins)
-
+# notes: https://gist.github.com/olivierlambert/c05f09221bdb5953c6c1b6f20c6b9f58
+# deployment: scp -r SOURCES/etc/xapi.d/plugins/* root@192.168.0.29:/etc/xapi.d/plugins/
 import json
+import os
 import sys
 import shlex
 import traceback
@@ -63,10 +65,17 @@ def probe_peers(session, args):
     return json.dumps(True)
 
 
-def format_partition(session, args):
+# xe host-call-plugin host-uuid=b0915757-5980-4dd0-bdfe-1300799fb896 plugin=xosan2.py fn=format_and_mount_partition args:device=/dev/sdb args:force=true
+def format_and_mount_partition(session, args):
     device = args['device']
     force_arg = ['-f'] if 'force' in args and args['force'] == 'true' else []
-    result = run_command(['mkfs.xfs', device] + force_arg)
+    result = run_command(['mkfs.xfs', '-L', 'xosanv2', device] + force_arg)
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    os.mkdir('/xosanv2')
+    with open("/etc/fstab", "a") as fstab:
+        fstab.write('LABEL=xosanv2\t/xosanv2\txfs\tdefaults\t0\t2\n')
+    result = run_command(['mount', '/xosanv2'])
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     return json.dumps(True)
@@ -99,5 +108,5 @@ if __name__ == "__main__":
         'install_packages': install_packages,
         'probe_peers': probe_peers,
         'list_partitions': list_partitions,
-        'format_partition': format_partition
+        'format_and_mount_partition': format_and_mount_partition
     })
