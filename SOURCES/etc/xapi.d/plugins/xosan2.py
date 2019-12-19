@@ -7,6 +7,7 @@
 # deployment: scp -r SOURCES/etc/xapi.d/plugins/* root@192.168.0.29:/etc/xapi.d/plugins/
 import json
 import os
+import re
 import sys
 import shlex
 import traceback
@@ -86,9 +87,9 @@ def list_partitions(session, args):
                           'NAME,KNAME,FSTYPE,MOUNTPOINT,LABEL,UUID,PARTUUID,PARTLABEL,RO,RM,MODEL,SERIAL,SIZE,TYPE,VENDOR,PKNAME'])
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-        # attempt to parse this:
-        # NAME="sr0" MAJ:MIN="11:0" RM="1" SIZE="1073741312" RO="0" TYPE="rom" MOUNTPOINT=""
-        # NAME="sda" MAJ:MIN="8:0" RM="0" SIZE="107374182400" RO="0" TYPE="disk" MOUNTPOINT=""
+    # attempt to parse this:
+    # NAME="sr0" MAJ:MIN="11:0" RM="1" SIZE="1073741312" RO="0" TYPE="rom" MOUNTPOINT=""
+    # NAME="sda" MAJ:MIN="8:0" RM="0" SIZE="107374182400" RO="0" TYPE="disk" MOUNTPOINT=""
     lines = result['stdout'].splitlines()
 
     def parse_line(line):
@@ -102,11 +103,42 @@ def list_partitions(session, args):
     return json.dumps({l['NAME']: l for l in lines})
 
 
+def ensure_open_iptables(session, args):
+    xosan_part = '''# XOSANv2 - do not edit
+-A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 24007 -j ACCEPT
+-A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 24008 -j ACCEPT
+-A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 49152 -j ACCEPT
+-A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 111 -j ACCEPT
+-A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m udp -p udp --dport 111 -j ACCEPT
+# END XOSANv2\n'''
+    need_iptable_update = False
+    with open('/etc/sysconfig/iptables') as f:
+        collected = []
+        content = f.readlines()
+        regex = re.compile('^\\s*#\\s*XOSANv2')
+        found_xosan = [line for line in content if re.match(regex, line)]
+        if not found_xosan:
+            for l in content:
+                if '-j REJECT' in l:
+                    collected.append(xosan_part)
+                collected.append(l)
+            need_iptable_update = True
+            print(''.join(collected))
+    if need_iptable_update:
+        with open('/etc/sysconfig/iptables', 'w') as f:
+            f.write(''.join(collected))
+        result = run_command(['systemctl', 'restart', 'iptables.service'])
+        if result['exit'] != 0:
+            raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    return json.dumps(True)
+
+
 _LOGGER = configure_logging('xosan2')
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
         'install_packages': install_packages,
         'probe_peers': probe_peers,
         'list_partitions': list_partitions,
-        'format_and_mount_partition': format_and_mount_partition
+        'format_and_mount_partition': format_and_mount_partition,
+        'ensure_open_iptables': ensure_open_iptables
     })
