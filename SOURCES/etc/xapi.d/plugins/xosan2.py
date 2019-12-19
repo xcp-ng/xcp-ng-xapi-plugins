@@ -123,7 +123,6 @@ def ensure_open_iptables(session, args):
                     collected.append(xosan_part)
                 collected.append(l)
             need_iptable_update = True
-            print(''.join(collected))
     if need_iptable_update:
         with open('/etc/sysconfig/iptables', 'w') as f:
             f.write(''.join(collected))
