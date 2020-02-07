@@ -132,6 +132,30 @@ def ensure_open_iptables(session, args):
     return json.dumps(True)
 
 
+def create_volume(session, args):
+    name = args['name']
+    arguments = json.loads(args['arguments'])
+    result = run_command(['gluster', 'volume', 'create', name] + arguments)
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    result = run_command(['gluster', 'volume', 'set', name, 'cluster.granular-entry-heal', 'enable'])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    result = run_command(['gluster', 'volume', 'set', name, 'group', 'virt'])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    result = run_command(['gluster', 'volume', 'set', name, 'features.shard-block-size', '512MB'])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    result = run_command(['gluster', 'volume', 'set', name, 'network.ping-timeout', '5'])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    result = run_command(['gluster', 'volume', 'start', name])
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    return json.dumps(result['stdout'])
+
+
 _LOGGER = configure_logging('xosan2')
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
@@ -139,5 +163,6 @@ if __name__ == "__main__":
         'probe_peers': probe_peers,
         'list_partitions': list_partitions,
         'format_and_mount_partition': format_and_mount_partition,
-        'ensure_open_iptables': ensure_open_iptables
+        'ensure_open_iptables': ensure_open_iptables,
+        'create_volume': create_volume
     })
