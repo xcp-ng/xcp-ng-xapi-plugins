@@ -18,7 +18,7 @@ sys.path.append('.')
 from xcpngutils import configure_logging, error_wrapped, install_package, raise_plugin_error, run_command
 from xcpngutils.filelocker import FileLocker
 
-packages = {
+PACKAGES = {
     'glusterfs-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
     'glusterfs-api-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-api-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
     'glusterfs-cli-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-cli-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
@@ -30,18 +30,25 @@ packages = {
     'python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
     'userspace-rcu-0.7.16-1.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=userspace-rcu-0.7.16-1.el7.x86_64.rpm'}
 
-repo_packages = ['attr', 'xfsprogs']
+REPO_PACKAGES = ['attr', 'xfsprogs']
+
+
+def _gluster_cmd(arg_array):
+    result = run_command(['gluster', '--mode=script', '--xml', ] + arg_array)
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    return result
 
 
 # those commands will fail if any of those packages is already present.
 def install_packages(session, args):
     # REMOVE THIS LINE before merging !!!
-    run_command(['rpm', '-e'] + packages.keys() + repo_packages)
+    run_command(['rpm', '-e'] + PACKAGES.keys() + REPO_PACKAGES)
     # #######
-    result = run_command(['yum', 'install', '-y'] + repo_packages)
+    result = run_command(['yum', 'install', '-y'] + REPO_PACKAGES)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['rpm', '-U'] + packages.values())
+    result = run_command(['rpm', '-U'] + PACKAGES.values())
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     result = run_command(['systemctl', 'enable', 'glusterd'])
@@ -60,9 +67,7 @@ def install_packages(session, args):
 def probe_peers(session, args):
     peers = json.loads(args['peers'])
     for peer in peers:
-        result = run_command(['gluster', 'peer', 'probe', peer])
-        if result['exit'] != 0:
-            raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+        _gluster_cmd(['peer', 'probe', peer])
     return json.dumps(True)
 
 
@@ -78,10 +83,11 @@ def format_partition(session, args):
 
 def mount_partition(session, args):
     label = args['label']
-    os.mkdir('/xosanv2')
+    mount_point = args['mountPoint']
+    os.mkdir(mount_point)
     with open("/etc/fstab", "a") as fstab:
-        fstab.write('LABEL=' + label + '\t/xosanv2\txfs\tdefaults\t0\t2\n')
-    result = run_command(['mount', '/xosanv2'])
+        fstab.write('LABEL=' + label + '\t' + mount_point + '\txfs\tdefaults\t0\t2\n')
+    result = run_command(['mount', mount_point])
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     return json.dumps(True)
@@ -140,26 +146,17 @@ def ensure_open_iptables(session, args):
 def create_volume(session, args):
     name = args['name']
     arguments = json.loads(args['arguments'])
-    result = run_command(['gluster', 'volume', 'create', name] + arguments)
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['gluster', 'volume', 'set', name, 'cluster.granular-entry-heal', 'enable'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['gluster', 'volume', 'set', name, 'group', 'virt'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['gluster', 'volume', 'set', name, 'features.shard-block-size', '512MB'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['gluster', 'volume', 'set', name, 'network.ping-timeout', '5'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['gluster', 'volume', 'start', name])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    _gluster_cmd(['volume', 'create', name] + arguments)
+    _gluster_cmd(['volume', 'set', name, 'cluster.granular-entry-heal', 'enable'])
+    _gluster_cmd(['volume', 'set', name, 'group', 'virt'])
+    _gluster_cmd(['volume', 'set', name, 'features.shard-block-size', '512MB'])
+    _gluster_cmd(['volume', 'set', name, 'network.ping-timeout', '5'])
+    _gluster_cmd(['volume', 'start', name, ])
+    result = _gluster_cmd(['volume', 'set', name, ])
     return json.dumps(result['stdout'])
 
+
+# TODO observability of gluster volumes and peers
 
 _LOGGER = configure_logging('xosan2')
 if __name__ == "__main__":
