@@ -42,9 +42,6 @@ def _gluster_cmd(arg_array):
 
 # those commands will fail if any of those packages is already present.
 def install_packages(session, args):
-    # REMOVE THIS LINE before merging !!!
-    run_command(['rpm', '-e'] + PACKAGES.keys() + REPO_PACKAGES)
-    # #######
     result = run_command(['yum', 'install', '-y'] + REPO_PACKAGES)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
@@ -55,9 +52,6 @@ def install_packages(session, args):
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     result = run_command(['systemctl', 'start', 'glusterd'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['iptables', '-F'])
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     return json.dumps(True)
