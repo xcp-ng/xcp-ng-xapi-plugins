@@ -18,19 +18,10 @@ sys.path.append('.')
 from xcpngutils import configure_logging, error_wrapped, install_package, raise_plugin_error, run_command
 from xcpngutils.filelocker import FileLocker
 
-PACKAGES = {
-    'glusterfs-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-api-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-api-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-cli-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-cli-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-client-xlators-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-client-xlators-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-extra-xlators-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-extra-xlators-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-fuse-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-fuse-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-libs-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-libs-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'glusterfs-server-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=glusterfs-server-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=python2-gluster-7.0rc3-0.1.gita92e9e8.el7.x86_64.rpm',
-    'userspace-rcu-0.7.16-1.el7.x86_64': 'https://nextcloud.vates.fr/index.php/s/PabagxbHY3zAeqK/download?path=%2F&files=userspace-rcu-0.7.16-1.el7.x86_64.rpm'}
-
-REPO_PACKAGES = ['attr', 'xfsprogs']
+GLUSTER_PACKAGES = ['glusterfs', 'glusterfs-api', 'glusterfs-cli', 'glusterfs-client-xlators',
+                    'glusterfs-extra-xlators', 'glusterfs-fuse', 'glusterfs-libs',
+                    'glusterfs-server', 'python2-gluster', 'userspace-rcu']
+REPO_PACKAGES = ['attr', 'xfsprogs'] + GLUSTER_PACKAGES
 
 
 def _gluster_cmd(arg_array):
@@ -42,10 +33,7 @@ def _gluster_cmd(arg_array):
 
 # those commands will fail if any of those packages is already present.
 def install_packages(session, args):
-    result = run_command(['yum', 'install', '-y'] + REPO_PACKAGES)
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['rpm', '-U'] + PACKAGES.values())
+    result = run_command(['yum', '--verbose', '--enablerepo=xcp-ng-testing', 'install', '-y'] + REPO_PACKAGES)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
     result = run_command(['systemctl', 'enable', 'glusterd'])
@@ -140,17 +128,17 @@ def ensure_open_iptables(session, args):
 def create_volume(session, args):
     name = args['name']
     arguments = json.loads(args['arguments'])
-    _gluster_cmd(['volume', 'create', name] + arguments)
-    _gluster_cmd(['volume', 'set', name, 'cluster.granular-entry-heal', 'enable'])
-    _gluster_cmd(['volume', 'set', name, 'group', 'virt'])
-    _gluster_cmd(['volume', 'set', name, 'features.shard-block-size', '512MB'])
-    _gluster_cmd(['volume', 'set', name, 'network.ping-timeout', '5'])
-    _gluster_cmd(['volume', 'start', name, ])
-    result = _gluster_cmd(['volume', 'set', name, ])
-    return json.dumps(result['stdout'])
+    result = [_gluster_cmd(['volume', 'create', name] + arguments)]
+    result += _gluster_cmd(['volume', 'set', name, 'cluster.granular-entry-heal', 'enable'])
+    result += _gluster_cmd(['volume', 'set', name, 'group', 'virt'])
+    result += _gluster_cmd(['volume', 'set', name, 'features.shard-block-size', '512MB'])
+    result += _gluster_cmd(['volume', 'set', name, 'network.ping-timeout', '5'])
+    result += _gluster_cmd(['volume', 'start', name, ])
+    return json.dumps(result)
 
 
 # TODO observability of gluster volumes and peers
+
 
 _LOGGER = configure_logging('xosan2')
 if __name__ == "__main__":
@@ -161,5 +149,5 @@ if __name__ == "__main__":
         'format_partition': format_partition,
         'mount_partition': mount_partition,
         'ensure_open_iptables': ensure_open_iptables,
-        'create_volume': create_volume
+        'create_volume': create_volume,
     })
