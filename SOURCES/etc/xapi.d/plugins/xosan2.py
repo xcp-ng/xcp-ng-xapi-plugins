@@ -137,7 +137,26 @@ def create_volume(session, args):
     return json.dumps(result)
 
 
-# TODO observability of gluster volumes and peers
+def get_generic_info(session, args):
+    result = {'pool list': _gluster_cmd(['pool', 'list'])['stdout'],
+              'volume list': _gluster_cmd(['volume', 'list', ''])['stdout']}
+    return json.dumps(result)
+
+
+def get_volume_info(session, args):
+    volume = args['volume']
+    result = {'volume info': _gluster_cmd(['volume', 'info', volume])['stdout'],
+              'volume status': _gluster_cmd(['volume', 'status', volume])['stdout'],
+              'volume status detail': _gluster_cmd(['volume', 'status', volume, 'detail'])['stdout'],
+              'volume status mem': _gluster_cmd(['volume', 'status', volume, 'mem'])['stdout'],
+              'volume heal info': _gluster_cmd(['volume', 'heal', volume, 'info'])['stdout'],
+              'volume top open': _gluster_cmd(['volume', 'top', volume, 'open'])['stdout'],
+              'volume top read': _gluster_cmd(['volume', 'top', volume, 'read'])['stdout'],
+              'volume top write': _gluster_cmd(['volume', 'top', volume, 'write'])['stdout'],
+              'volume top opendir': _gluster_cmd(['volume', 'top', volume, 'opendir'])['stdout'],
+              'volume top readdir': _gluster_cmd(['volume', 'top', volume, 'readdir'])['stdout'],
+              }
+    return json.dumps(result)
 
 
 _LOGGER = configure_logging('xosan2')
@@ -150,4 +169,6 @@ if __name__ == "__main__":
         'mount_partition': mount_partition,
         'ensure_open_iptables': ensure_open_iptables,
         'create_volume': create_volume,
+        'get_generic_info': get_generic_info,
+        'get_volume_info': get_volume_info
     })
