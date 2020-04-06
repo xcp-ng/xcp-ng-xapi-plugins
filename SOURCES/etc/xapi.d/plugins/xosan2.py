@@ -31,51 +31,47 @@ def _gluster_cmd(arg_array):
     return result
 
 
+def check_run(command_array):
+    result = run_command(command_array)
+    if result['exit'] != 0:
+        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+
+
 # those commands will fail if any of those packages is already present.
-def install_packages(session, args):
-    result = run_command(['yum', '--verbose', '--enablerepo=xcp-ng-testing', 'install', '-y'] + REPO_PACKAGES)
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['systemctl', 'enable', 'glusterd'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
-    result = run_command(['systemctl', 'start', 'glusterd'])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+def install_packages(_session, _args):
+    check_run(['yum', '--verbose', '--enablerepo=xcp-ng-testing', 'install', '-y'] + REPO_PACKAGES)
+    check_run(['systemctl', 'enable', 'glusterd'])
+    check_run(['systemctl', 'start', 'glusterd'])
     return json.dumps(True)
 
 
 # peers is a Json array of string designating machines (ip address or hostname)
-def probe_peers(session, args):
+def probe_peers(_session, args):
     peers = json.loads(args['peers'])
     for peer in peers:
         _gluster_cmd(['peer', 'probe', peer])
     return json.dumps(True)
 
 
-def format_partition(session, args):
+def format_partition(_session, args):
     device = args['device']
     label = args['label']
     force_arg = ['-f'] if 'force' in args and args['force'] == 'true' else []
-    result = run_command(['mkfs.xfs', '-L', label, device] + force_arg)
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    check_run(['mkfs.xfs', '-L', label, device] + force_arg)
     return json.dumps(True)
 
 
-def mount_partition(session, args):
+def mount_partition(_session, args):
     label = args['label']
     mount_point = args['mountPoint']
     os.mkdir(mount_point)
     with open("/etc/fstab", "a") as fstab:
         fstab.write('LABEL=' + label + '\t' + mount_point + '\txfs\tdefaults\t0\t2\n')
-    result = run_command(['mount', mount_point])
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    check_run(['mount', mount_point])
     return json.dumps(True)
 
 
-def list_partitions(session, args):
+def list_partitions(_session, _args):
     result = run_command(['lsblk', '-P', '-b', '-o',
                           'NAME,KNAME,FSTYPE,MOUNTPOINT,LABEL,UUID,PARTUUID,PARTLABEL,RO,RM,MODEL,SERIAL,SIZE,TYPE,VENDOR,PKNAME'])
     if result['exit'] != 0:
@@ -93,10 +89,10 @@ def list_partitions(session, args):
         return res
 
     lines = map(parse_line, lines)
-    return json.dumps({l['NAME']: l for l in lines})
+    return json.dumps({line['NAME']: line for line in lines})
 
 
-def ensure_open_iptables(session, args):
+def ensure_open_iptables(_session, _args):
     xosan_part = '''# XOSANv2 - do not edit
 -A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 24007 -j ACCEPT
 -A RH-Firewall-1-INPUT -m conntrack --ctstate NEW -m tcp -p tcp --dport 24008 -j ACCEPT
@@ -119,13 +115,11 @@ def ensure_open_iptables(session, args):
     if need_iptable_update:
         with open('/etc/sysconfig/iptables', 'w') as f:
             f.write(''.join(collected))
-        result = run_command(['systemctl', 'restart', 'iptables.service'])
-        if result['exit'] != 0:
-            raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+        check_run(['systemctl', 'restart', 'iptables.service'])
     return json.dumps(True)
 
 
-def create_volume(session, args):
+def create_volume(_session, args):
     name = args['name']
     arguments = json.loads(args['arguments'])
     result = [_gluster_cmd(['volume', 'create', name] + arguments)]
@@ -137,13 +131,13 @@ def create_volume(session, args):
     return json.dumps(result)
 
 
-def get_generic_info(session, args):
+def get_generic_info(_session, _args):
     result = {'pool list': _gluster_cmd(['pool', 'list'])['stdout'],
               'volume list': _gluster_cmd(['volume', 'list', ''])['stdout']}
     return json.dumps(result)
 
 
-def get_volume_info(session, args):
+def get_volume_info(_session, args):
     volume = args['volume']
     result = {'volume info': _gluster_cmd(['volume', 'info', volume])['stdout'],
               'volume status': _gluster_cmd(['volume', 'status', volume])['stdout'],
