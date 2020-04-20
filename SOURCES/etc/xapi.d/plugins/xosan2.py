@@ -39,8 +39,7 @@ def check_run(command_array):
 
 # those commands will fail if any of those packages is already present.
 def install_packages(_session, _args):
-    # TODO remove --enablerepo when package are outside testing in XCP-ng 8.0
-    check_run(['yum', '--verbose', '--enablerepo=xcp-ng-testing', 'install', '-y'] + REPO_PACKAGES)
+    check_run(['yum', '--verbose', 'install', '-y'] + REPO_PACKAGES)
     check_run(['systemctl', 'enable', 'glusterd'])
     check_run(['systemctl', 'start', 'glusterd'])
     return json.dumps(True)
