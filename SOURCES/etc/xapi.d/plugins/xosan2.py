@@ -31,15 +31,15 @@ def _gluster_cmd(arg_array):
     return result
 
 
-def check_run(command_array):
-    result = run_command(command_array)
+def check_run(command_array, env=None):
+    result = run_command(command_array, env)
     if result['exit'] != 0:
         raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
 
 
 # those commands will fail if any of those packages is already present.
 def install_packages(_session, _args):
-    check_run(['yum', '--verbose', 'install', '-y'] + REPO_PACKAGES)
+    check_run(['yum', '--verbose', 'install', '-y'] + REPO_PACKAGES, env={'URLGRABBER_DEBUG': '1'})
     check_run(['systemctl', 'enable', 'glusterd'])
     check_run(['systemctl', 'start', 'glusterd'])
     return json.dumps(True)
