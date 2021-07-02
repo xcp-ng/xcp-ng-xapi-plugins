@@ -14,10 +14,7 @@ class FileLockerError(Exception):
     pass
 
 class FileLocker(object):
-    __slots__ = (
-      'pid', 'lockname', 'filename', 'previous_signal', 'file', 'timeout',
-      'auto_remove'
-    )
+    __slots__ = ('pid', 'lockname', 'filename', 'previous_signal', 'file', 'timeout', 'auto_remove')
 
     def __init__(self, lockname=None, timeout=0, auto_remove=True, dir=None):
         if not dir:
@@ -56,7 +53,7 @@ class FileLocker(object):
                         self._prelock()
                         with timeout(self.timeout):
                             fcntl.flock(fd, fcntl.LOCK_EX)
-                    except IOError, error:
+                    except IOError as error:
                         if error.errno != errno.EINTR:
                             raise error
                         self._timeout_reached()
@@ -87,13 +84,13 @@ class FileLocker(object):
 
         try:
             self._unlocked()
-        except:
+        except Exception:
             pass
 
         if self.auto_remove:
             try:
                 os.remove(self.filename)
-            except:
+            except Exception:
                 pass
 
         try:
