@@ -45,7 +45,8 @@ netdata_streaming_content = '''
     initial clock resync iterations = 60
 '''
 
-# xe host-call-plugin host-uuid=a34931d6-fcc5-4f4a-9896-f03ea1ede176 plugin=netdata.py fn=install_netdata args:api_key='c1814542-c066-11e9-a752-080027d5b5e4' args:destination='tcp:192.168.0.34:19999'
+# xe host-call-plugin host-uuid=a34931d6-fcc5-4f4a-9896-f03ea1ede176 plugin=netdata.py fn=install_netdata
+#     args:api_key='c1814542-c066-11e9-a752-080027d5b5e4' args:destination='tcp:192.168.0.34:19999'
 # should return JSON true or error
 @error_wrapped
 def install_netdata(session, args):

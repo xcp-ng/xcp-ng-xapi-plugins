@@ -43,7 +43,7 @@ class OperationLocker(FileLocker):
         try:
             self.file.seek(0)
             self.current_operation = self.file.readline().rstrip('\n')
-        except:
+        except Exception:
             pass
 
         # 2. If there is no current operation, it's ok we can try to lock the file.
@@ -153,7 +153,8 @@ def check_upgrade(session, args):
 def upgrade():
     # TODO
     # check checksum of repo file (and probably in the future check its signature)
-    # find a way to handle ".rpmnew" files that may have been created by the upgrade (stands true for any update actually)
+    # find a way to handle ".rpmnew" files that may have been created
+    # by the upgrade (stands true for any update actually)
     # Warning about .rpmsave
     # check for available space
     # edit yum configuration
@@ -180,7 +181,9 @@ def get_proxies(session, args):
 # expects a JSON dict in a 'proxies' argument. The dict should be of the form {repo_id: proxy} with the special proxy
 # '_none_' used for removal.
 # example: {"xcp-ng-base": "http://192.168.100.82:3142"}
-# returns a JSON dict like that: {"status": true} or like that: {"status": false, "error": "Unexpected URL \"https://updates.xcp-ng.org/7/7.6/updates/x86_64/\" for proxy \"_none_\" in section \"xcp-ng-updates\""}
+# returns a JSON dict like that: {"status": true} or like that:
+# {"status": false, "error": "Unexpected URL \"https://updates.xcp-ng.org/7/7.6/updates/x86_64/\"
+#     for proxy \"_none_\" in section \"xcp-ng-updates\""}
 
 @operationlock()
 def set_proxies(session, args):
@@ -215,7 +218,7 @@ def set_proxies(session, args):
         with open(CONFIGURATION_FILE, 'wb') as configfile:
             config.write(configfile)
         return json.dumps({'status': True})
-    except:
+    except Exception:
         return json.dumps({'status': False, 'error': traceback.format_exc()})
 
 
