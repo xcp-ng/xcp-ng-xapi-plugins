@@ -8,6 +8,7 @@ import os
 import subprocess
 import sys
 import traceback
+import XenAPI
 import XenAPIPlugin
 import yum
 
@@ -116,10 +117,27 @@ def check_update(session, args):
 @operationlock(timeout=10)
 def update(session, args):
     packages = args.get('packages')
-    command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
-    if packages:
-        command.append(packages)
-    return json.dumps(run_command(command))
+    task = None
+    res = None
+    try:
+        host = session.xenapi.session.get_this_host(session.handle)
+        host_name = session.xenapi.host.get_name_label(host)
+        host_uuid = session.xenapi.host.get_uuid(host)
+        task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
+        packages = args.get('packages')
+        command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
+        if packages:
+            command.append(packages)
+        res = run_command(command)
+        session.xenapi.task.set_status(task, 'success')
+    except XenAPI.Failure as e:
+        res = {'error': e.details}
+    except Exception as e:
+        res = {'error': str(e)}
+    finally:
+        if task:
+            session.xenapi.task.destroy(task)
+        return json.dumps(res)
 
 
 def check_upgrade(session, args):
