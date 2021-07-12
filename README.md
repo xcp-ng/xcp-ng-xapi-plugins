@@ -64,3 +64,24 @@ $ xe host-call-plugin host-uuid=${HOST_UNDER_TEST_UUID} plugin=updater.py fn=set
 The `proxies` parameter is a JSON dict section-> proxy for the list of sections whose proxy we want to alter.
 
 The returned value should be the JSON value `{"status": true}` or `{"status": false, "error": "<message>"}`.
+
+## LSBLK parser
+
+A plugin to get the lsblk output on a given host
+
+### Example
+
+`xe host-call-plugin host-uuid=6003599d-1b0f-4762-92a0-b5b4134f32ee plugin=parse-lsblk.py fn=list_blockdevices`
+
+Would return:
+```
+{
+  "blockdevices": [{"kname": "sdb", "name": "sdb", "pkname": "", "mountpoint": "", "ro": "0", "type": "disk", "size": "64424509440"}, {"kname": "sda", "name": "sda", "pkname": "", "mountpoint": "", "ro": "0", "type": "disk", "children": [{"kname": "sda4", "name": "sda4", "pkname": "sda", "mountpoint": "", "ro": "0", "type": "part", "size": "536870912"}, {"kname": "sda2", "name": "sda2", "pkname": "sda", "mountpoint": "", "ro": "0", "type": "part", "size": "19327352832"}, {"kname": "sda5", "name": "sda5", "pkname": "sda", "mountpoint": "/var/log", "ro": "0", "type": "part", "size": "4294967296"}, {"kname": "sda3", "name": "sda3", "pkname": "sda", "mountpoint": "", "ro": "0", "type": "part", "children": [{"kname": "dm-0", "name": "XSLocalEXT--1fad55d2--4f07--8145--c78a--297b173e06b0-1fad55d2--4f07--8145--c78a--297b173e06b0", "pkname": "sda3", "mountpoint": "/run/sr-mount/1fad55d2-4f07-8145-c78a-297b173e06b0", "ro": "0", "type": "lvm", "size": "19847446528"}], "size": "19863158272"}, {"kname": "sda1", "name": "sda1", "pkname": "sda", "mountpoint": "/", "ro": "0", "type": "part", "size": "19327352832"}, {"kname": "sda6", "name": "sda6", "pkname": "sda", "mountpoint": "[SWAP]", "ro": "0", "type": "part", "size": "1073741824"}], "size": "64424509440"}],
+  "command": "lsblk -P -b -o NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT",
+  "exit": 0,
+  "stderr": "",
+  "stdout": "NAME=\"sdb\" KNAME=\"sdb\" PKNAME=\"\" SIZE=\"64424509440\" TYPE=\"disk\" RO=\"0\" MOUNTPOINT=\"\"\nNAME=\"sda\" KNAME=\"sda\" PKNAME=\"\" SIZE=\"64424509440\" TYPE=\"disk\" RO=\"0\" MOUNTPOINT=\"\"\nNAME=\"sda4\" KNAME=\"sda4\" PKNAME=\"sda\" SIZE=\"536870912\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"\"\nNAME=\"sda2\" KNAME=\"sda2\" PKNAME=\"sda\" SIZE=\"19327352832\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"\"\nNAME=\"sda5\" KNAME=\"sda5\" PKNAME=\"sda\" SIZE=\"4294967296\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"/var/log\"\nNAME=\"sda3\" KNAME=\"sda3\" PKNAME=\"sda\" SIZE=\"19863158272\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"\"\nNAME=\"XSLocalEXT--1fad55d2--4f07--8145--c78a--297b173e06b0-1fad55d2--4f07--8145--c78a--297b173e06b0\" KNAME=\"dm-0\" PKNAME=\"sda3\" SIZE=\"19847446528\" TYPE=\"lvm\" RO=\"0\" MOUNTPOINT=\"/run/sr-mount/1fad55d2-4f07-8145-c78a-297b173e06b0\"\nNAME=\"sda1\" KNAME=\"sda1\" PKNAME=\"sda\" SIZE=\"19327352832\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"/\"\nNAME=\"sda6\" KNAME=\"sda6\" PKNAME=\"sda\" SIZE=\"1073741824\" TYPE=\"part\" RO=\"0\" MOUNTPOINT=\"[SWAP]\"\n"
+}
+```
+- `blockdevices` is a json representation of the blockdevices.
+- `stdout` is the raw output.
