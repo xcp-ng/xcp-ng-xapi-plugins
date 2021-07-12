@@ -23,8 +23,8 @@ class OperationLocker(FileLocker):
             raise Exception('The plugin is busy.')
 
 
-# returns {"status": true, "result": {"raid": {"State": "clean", (...)},
-#     "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], (...)]}}
+# returns {"raid": {"State": "clean", (...)},
+#     "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], (...)]}
 @error_wrapped
 def check_raid_pool(session, args):
     device = '/dev/md127'
@@ -42,7 +42,7 @@ def check_raid_pool(session, args):
                    lines[footer_index + 1:]]
         # 'Version : 1.0' -> {"Version": "1.0"}
         lines = dict([[element.strip() for element in line.split(' : ', 1)] for line in lines[0:footer_index]])
-        return json.dumps({'status': True, 'result': {'raid': lines, 'volumes': volumes}})
+        return json.dumps({'raid': lines, 'volumes': volumes})
 
 
 if __name__ == "__main__":

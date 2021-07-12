@@ -9,13 +9,16 @@ import sys
 import XenAPIPlugin
 
 sys.path.append('.')
-from xcpngutils import configure_logging
+from xcpngutils import configure_logging, run_command, error_wrapped
 
 # returns a JSON dict {<poolname>: {mountpoint: <mountpoint>, ...}}
 # xe host-call-plugin host-uuid=<UUID> plugin=zfs.py fn=list_zfs_pools
+@error_wrapped
 def list_zfs_pools(session, args):
     try:
-        result = run_command(['zfs', 'get', '-H', 'all'])
+        command = ['zfs', 'get', '-H', 'all']
+        result = run_command(command)
+        _LOGGER(command)
         lines = result['stdout'].splitlines()
         res = {}
 
@@ -33,16 +36,7 @@ def list_zfs_pools(session, args):
         if e.errno == errno.ENOENT:
             return json.dumps({})
         else:
-            raise e
-
-
-def run_command(command):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = process.communicate()
-    result = {'exit': process.returncode, 'stdout': stdout, 'stderr': stderr, 'command': command}
-    _LOGGER.info(result)
-    return result
-
+            raise
 
 _LOGGER = configure_logging('zfs')
 if __name__ == "__main__":

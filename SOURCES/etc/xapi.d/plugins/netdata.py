@@ -86,7 +86,7 @@ def get_netdata_api_key(session, args):
             # if the file doesn't exist, the system is not configured for streaming, return empty string
             if e.errno == errno.ENOENT:
                 return ''
-            raise e
+            raise
 
 
 _LOGGER = configure_logging('netdata')

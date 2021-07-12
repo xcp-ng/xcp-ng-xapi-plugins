@@ -94,9 +94,9 @@ def error_wrapped(func):
     def wrapper(*args, **kwds):
         try:
             return func(*args, **kwds)
-        except XenAPIPlugin.Failure as e:
+        except XenAPIPlugin.Failure:
             # pass through what was already handled
-            raise e
+            raise
         except EnvironmentError as e:
             message = e.strerror if e.strerror is not None else str(e.args)
             raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()])
