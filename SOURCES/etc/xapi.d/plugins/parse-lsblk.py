@@ -8,7 +8,7 @@ import XenAPIPlugin
 from xcpngutils import run_command
 
 def list_blockdevices(session, args):
-    result = run_command(["lsblk",  "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"])
+    result = run_command(["lsblk", "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"])
     output_string = result["stdout"].decode("utf-8").strip()
 
     results = list()
