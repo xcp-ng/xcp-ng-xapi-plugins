@@ -20,7 +20,7 @@ def list_blockdevices(session, args):
         pkname = output_dict["pkname"]
         if pkname != "":
             parent = blockdevices[pkname]
-            if "children" not in parent.keys():
+            if "children" not in parent:
                 parent["children"] = list()
             parent["children"].append(output_dict)
         else:
