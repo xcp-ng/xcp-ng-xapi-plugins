@@ -2,6 +2,12 @@
 
 This repo hosts all the extra plugins installed in a XCP-ng host in `/etc/xapi.d/plugins`.
 
+## Return format
+
+A plugin should respect this return format:
+- Success: return a string (can be empty) or a JSON string representing the result of the command given to the plugin
+- Error: raise a `XenAPIPlugin.Failure` describing the error, to do that: either raise the `XenAPIPlugin.Failure` exception directly or use `error_wrapped` from `xcpngutils`
+
 ## XCP-ng ZFS pool list
 
 A xapi plugin to discover ZFS pools present on the host.
@@ -20,7 +26,7 @@ A xapi plugin to get the current state of the raid devices on the host.
 ### `check_raid_pool`:
 ```
 $ xe host-call-plugin host-uuid=<uuid> plugin=raid.py fn=check_raid_pool
-{"status": true, "result": {"raid": {"Working Devices": "2", "Raid Devices": "2", "Raid Level": "raid1", "Creation Time": "Wed Jul 17 13:29:42 2019", "Used Dev Size": "52428672 (50.00 GiB 53.69 GB)", "UUID": "1766eb6e:85762159:4c98b42e:2da92c97", "Array Size": "52428672 (50.00 GiB 53.69 GB)", "Failed Devices": "0", "State": "clean", "Version": "1.0", "Events": "44", "Persistence": "Superblock is persistent", "Spare Devices": "0", "Name": "localhost:127", "Active Devices": "2", "Total Devices": "2", "Update Time": "Tue Jul 30 01:58:48 2019"}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], ["1", "8", "16", "1", "active sync", "/dev/sdb"]]}}
+{"raid": {"Working Devices": "2", "Raid Devices": "2", "Raid Level": "raid1", "Creation Time": "Wed Jul 17 13:29:42 2019", "Used Dev Size": "52428672 (50.00 GiB 53.69 GB)", "UUID": "1766eb6e:85762159:4c98b42e:2da92c97", "Array Size": "52428672 (50.00 GiB 53.69 GB)", "Failed Devices": "0", "State": "clean", "Version": "1.0", "Events": "44", "Persistence": "Superblock is persistent", "Spare Devices": "0", "Name": "localhost:127", "Active Devices": "2", "Total Devices": "2", "Update Time": "Tue Jul 30 01:58:48 2019"}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], ["1", "8", "16", "1", "active sync", "/dev/sdb"]]}
 ```
 
 
@@ -59,11 +65,10 @@ The answer is a JSON dict section -> proxy. The dict is empty if the file couldn
 $ echo $JSON_PROXY
 {"xcp-ng-base": "http://192.168.100.82:3142", "xcp-ng-updates": "_none_", "xcp-ng-extras": "_none_", "xcp-ng-extras_testing": "_none_", "xcp-ng-updates_testing": "http://192.168.100.82:3142"}
 $ xe host-call-plugin host-uuid=<uuid> plugin=updater.py fn=set_proxies args:proxies="'$JSON_PROXY'"
-{"status": true}
 ```
 The `proxies` parameter is a JSON dict section-> proxy for the list of sections whose proxy we want to alter.
 
-The returned value should be the JSON value `{"status": true}` or `{"status": false, "error": "<message>"}`.
+The returned value should be an empty string in case of success.
 
 ## LSBLK parser
 

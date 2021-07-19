@@ -13,7 +13,7 @@ import XenAPIPlugin
 import yum
 
 sys.path.append('.')
-from xcpngutils import configure_logging, run_command
+from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 
 
@@ -79,12 +79,9 @@ def operationlock(*pid_args, **pid_kwargs):
     def wrapper(func):
         @wraps(func)
         def decorator(*args, **kwargs):
-            try:
-                pid_kwargs['operation'] = func.__name__
-                with OperationLocker(*pid_args, **pid_kwargs):
-                    return func(*args, **kwargs)
-            except Exception as e:
-                return json.dumps({'error': str(e)})
+            pid_kwargs['operation'] = func.__name__
+            with OperationLocker(*pid_args, **pid_kwargs):
+                return func(*args, **kwargs)
         return decorator
     return wrapper
 
@@ -97,7 +94,7 @@ def display_package(p):
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
-
+@error_wrapped
 @operationlock()
 def check_update(session, args):
     yum_instance = yum.YumBase()
@@ -113,12 +110,13 @@ def check_update(session, args):
     yum_instance.ts.order()
     return json.dumps(map(display_package, packages))
 
-
+@error_wrapped
 @operationlock(timeout=10)
 def update(session, args):
     packages = args.get('packages')
     task = None
     res = None
+    error = None
     try:
         host = session.xenapi.session.get_this_host(session.handle)
         host_name = session.xenapi.host.get_name_label(host)
@@ -130,13 +128,13 @@ def update(session, args):
             command.append(packages)
         res = run_command(command)
         session.xenapi.task.set_status(task, 'success')
-    except XenAPI.Failure as e:
-        res = {'error': e.details}
     except Exception as e:
-        res = {'error': str(e)}
+        error = e
     finally:
         if task:
             session.xenapi.task.destroy(task)
+        if error:
+            raise error
         return json.dumps(res)
 
 
@@ -170,6 +168,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 
 
 # returns a JSON dict {repo_id: proxy}
+@error_wrapped
 @operationlock()
 def get_proxies(session, args):
     config = ConfigParser.ConfigParser({'proxy': '_none_'})
@@ -181,46 +180,41 @@ def get_proxies(session, args):
 # expects a JSON dict in a 'proxies' argument. The dict should be of the form {repo_id: proxy} with the special proxy
 # '_none_' used for removal.
 # example: {"xcp-ng-base": "http://192.168.100.82:3142"}
-# returns a JSON dict like that: {"status": true} or like that:
-# {"status": false, "error": "Unexpected URL \"https://updates.xcp-ng.org/7/7.6/updates/x86_64/\"
-#     for proxy \"_none_\" in section \"xcp-ng-updates\""}
-
+# returns a JSON empty string or raise a XenAPIFailure in case of error
+@error_wrapped
 @operationlock()
 def set_proxies(session, args):
     # '{"xcp-ng-base": "http://192.168.100.82:3142"}'
     # '{"xcp-ng-base": "_none_"}'
-    try:
-        special_url_prefix = 'http://HTTPS///'
-        https_url_prefix = 'https://'
-        proxies = json.loads(args['proxies'])
-        config = ConfigParser.ConfigParser()
-        if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
-            return json.dumps({'status': False, 'error': 'could not read file %s' % CONFIGURATION_FILE})
-        for section in proxies:
-            if config.has_section(section):
-                # idempotence
-                if proxies[section] == '_none_' and not config.has_option(section, 'proxy'):
-                    continue
-                if config.has_option(section, 'proxy') and config.get(section, 'proxy') == proxies[section]:
-                    continue
-                config.set(section, 'proxy', proxies[section])
-                url = config.get(section, 'baseurl')
-                if proxies[section] == '_none_' and url.startswith(special_url_prefix):
-                    config.set(section, 'baseurl', https_url_prefix + url[len(special_url_prefix):])
-                elif proxies[section] != '_none_' and url.startswith(https_url_prefix):
-                    config.set(section, 'baseurl', special_url_prefix + url[len(https_url_prefix):])
-                else:
-                    return json.dumps({'status': False,
-                                       'error': 'Unexpected URL "%s" for proxy "%s" in section "%s"' % (
-                                           url, proxies[section], section)})
-            else:
-                return json.dumps({'status': False, 'error': 'Can\'t find section "%s" in config file' % section})
-        with open(CONFIGURATION_FILE, 'wb') as configfile:
-            config.write(configfile)
-        return json.dumps({'status': True})
-    except Exception:
-        return json.dumps({'status': False, 'error': traceback.format_exc()})
+    special_url_prefix = 'http://HTTPS///'
+    https_url_prefix = 'https://'
+    proxies = json.loads(args['proxies'])
+    config = ConfigParser.ConfigParser()
+    if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
+        raise Exception('could not read file %s' % CONFIGURATION_FILE)
 
+    for section in proxies:
+        if not config.has_section(section):
+            raise Exception("Can't find section '%s' in config file" % section)
+
+        # idempotence
+        if proxies[section] == '_none_' and not config.has_option(section, 'proxy'):
+            continue
+        if config.has_option(section, 'proxy') and config.get(section, 'proxy') == proxies[section]:
+            continue
+
+        config.set(section, 'proxy', proxies[section])
+        url = config.get(section, 'baseurl')
+        if proxies[section] == '_none_' and url.startswith(special_url_prefix):
+            config.set(section, 'baseurl', https_url_prefix + url[len(special_url_prefix):])
+        elif proxies[section] != '_none_' and url.startswith(https_url_prefix):
+            config.set(section, 'baseurl', special_url_prefix + url[len(https_url_prefix):])
+        else:
+            raise Exception('Unexpected URL "%s" for proxy "%s" in section "%s"' % (url, proxies[section], section))
+
+    with open(CONFIGURATION_FILE, 'wb') as configfile:
+        config.write(configfile)
+    return ''
 
 _LOGGER = configure_logging('updater')
 if __name__ == "__main__":

@@ -1,12 +1,14 @@
 #!/usr/bin/python
+# -*- coding: utf-8 -*-
 
 import json
 import re
 
 import XenAPIPlugin
 
-from xcpngutils import run_command
+from xcpngutils import run_command, error_wrapped
 
+@error_wrapped
 def list_blockdevices(session, args):
     result = run_command(["lsblk", "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"])
     output_string = result["stdout"].decode("utf-8").strip()

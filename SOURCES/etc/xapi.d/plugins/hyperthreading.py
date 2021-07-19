@@ -9,9 +9,9 @@ import sys
 import XenAPIPlugin
 
 sys.path.append('.')
-from xcpngutils import configure_logging, run_command
+from xcpngutils import configure_logging, run_command, error_wrapped
 
-
+@error_wrapped
 def get_hyperthreading(session, args):
     result = run_command(['xl', 'info', 'threads_per_core'])
     _LOGGER.info(result)
