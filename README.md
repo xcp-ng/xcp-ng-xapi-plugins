@@ -119,3 +119,12 @@ Return whether hyperthreading is enabled on the host.
 $ xe host-call-plugin host-uuid=<uuid> plugin=hyperthreading.py fn=get_hyperthreading
 true
 ```
+
+## Tests
+
+To run the plugins' unit tests you'll need to install `pytest` and `mock`.
+
+To run all tests you can run:
+```py
+pytest tests/
+```
