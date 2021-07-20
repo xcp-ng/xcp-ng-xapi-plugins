@@ -57,18 +57,18 @@ def install_netdata(session, args):
         with open("/etc/netdata/stream.conf", "w") as conf_file:
             conf_file.write(
                 netdata_streaming_content.format(destination, api_key))
-        result = run_command(['service', 'netdata', 'restart'])
-        if result['exit'] == 0:
-            return json.dumps(True)
-        else:
-            raise Exception(result)
+        run_command(['service', 'netdata', 'restart'])
+        return json.dumps(True)
 
 
 @error_wrapped
 def is_netdata_installed(session, args):
     with OperationLocker():
-        result = run_command(['service', 'netdata', 'status'])
-        return json.dumps(result['exit'] == 0)
+        try:
+            run_command(['service', 'netdata', 'status'])
+            return json.dumps(True)
+        except Exception:
+            return json.dumps(False)
 
 
 # returns empty string if no streaming is configured
