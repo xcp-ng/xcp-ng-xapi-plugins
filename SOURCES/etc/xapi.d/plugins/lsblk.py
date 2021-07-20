@@ -9,7 +9,7 @@ import XenAPIPlugin
 from xcpngutils import run_command, error_wrapped
 
 @error_wrapped
-def list_blockdevices(session, args):
+def list_block_devices(session, args):
     result = run_command(["lsblk", "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"])
     output_string = result["stdout"].decode("utf-8").strip()
 
@@ -30,8 +30,7 @@ def list_blockdevices(session, args):
 
         blockdevices[kname] = output_dict
 
-    result["blockdevices"] = results
-    return json.dumps(result)
+    return json.dumps({'blockdevices': results})
 
 if __name__ == "__main__":
-    XenAPIPlugin.dispatch({"list_blockdevices": list_blockdevices})
+    XenAPIPlugin.dispatch({"list_block_devices": list_block_devices})
