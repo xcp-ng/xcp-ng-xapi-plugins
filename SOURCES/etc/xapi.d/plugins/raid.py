@@ -3,9 +3,8 @@
 
 import json
 import sys
-import traceback
+
 import XenAPIPlugin
-from functools import wraps
 
 sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped

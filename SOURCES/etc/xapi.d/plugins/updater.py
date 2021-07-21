@@ -4,13 +4,10 @@
 from functools import wraps
 import ConfigParser
 import json
-import os
-import subprocess
 import sys
-import traceback
-import XenAPI
-import XenAPIPlugin
 import yum
+
+import XenAPIPlugin
 
 sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
