@@ -6,14 +6,9 @@
 
 import errno
 import json
-import os
-import shutil
 import sys
-import urllib2
 
 import XenAPIPlugin
-
-from urlparse import urlparse
 
 sys.path.append('.')
 from xcpngutils import configure_logging, error_wrapped, install_package, run_command

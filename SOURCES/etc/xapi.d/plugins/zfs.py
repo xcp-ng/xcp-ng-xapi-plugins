@@ -3,7 +3,6 @@
 
 import errno
 import json
-import subprocess
 import sys
 
 import XenAPIPlugin

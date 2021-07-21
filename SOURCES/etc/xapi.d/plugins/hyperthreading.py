@@ -1,9 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import errno
 import json
-import subprocess
 import sys
 
 import XenAPIPlugin
