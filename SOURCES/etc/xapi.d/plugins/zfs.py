@@ -17,8 +17,8 @@ from xcpngutils import configure_logging, run_command, error_wrapped
 def list_zfs_pools(session, args):
     try:
         command = ['zfs', 'get', '-H', 'all']
+        _LOGGER.info('executing command {}...'.format(command))
         result = run_command(command)
-        _LOGGER(command)
         lines = result['stdout'].splitlines()
         res = {}
 
