@@ -105,7 +105,8 @@ def check_update(session, args):
     yum_instance.populateTs(keepold=0)
     yum_instance.ts.check()  # required for ordering
     yum_instance.ts.order()
-    return json.dumps(map(display_package, packages))
+    # Python 2&3 compatible code
+    return json.dumps(list(map(display_package, packages)))
 
 @error_wrapped
 @operationlock(timeout=10)
