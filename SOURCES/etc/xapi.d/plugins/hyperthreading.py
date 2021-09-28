@@ -19,7 +19,7 @@ def get_hyperthreading(session, args):
     return json.dumps(int(lines[0]) > 1)
 
 
-_LOGGER = configure_logging('pyperthreading')
+_LOGGER = configure_logging('hyperthreading')
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
         'get_hyperthreading': get_hyperthreading
