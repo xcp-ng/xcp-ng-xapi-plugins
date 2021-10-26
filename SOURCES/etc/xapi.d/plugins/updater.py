@@ -119,7 +119,6 @@ def check_update(session, args):
 @operationlock(timeout=10)
 def update(session, args):
     repos = build_repo_list(args.get('repos'))
-    packages = args.get('packages')
     task = None
     res = None
     error = None
