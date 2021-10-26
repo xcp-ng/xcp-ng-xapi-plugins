@@ -14,7 +14,7 @@ from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 
 
-REPOS = ('xcp-ng-base', 'xcp-ng-updates')
+DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates')
 
 
 class OperationException(Exception):
@@ -91,14 +91,21 @@ def display_package(p):
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
+def build_repo_list(additional_repos):
+    repos = list(DEFAULT_REPOS)
+    if additional_repos:
+        repos += [x.strip() for x in additional_repos.split(',')]
+    return repos
+
 @error_wrapped
 @operationlock()
 def check_update(session, args):
+    repos = build_repo_list(args.get('repos'))
     yum_instance = yum.YumBase()
     yum_instance.preconf.debuglevel = 0
     yum_instance.preconf.plugins = True
     yum_instance.repos.disableRepo('*')
-    yum_instance.repos.enableRepo(','.join(REPOS))
+    yum_instance.repos.enableRepo(','.join(repos))
     packages = yum_instance.doPackageLists(pkgnarrow='updates')
     del yum_instance.ts
     yum_instance.initActionTs()  # make a new, blank ts to populate
@@ -111,6 +118,7 @@ def check_update(session, args):
 @error_wrapped
 @operationlock(timeout=10)
 def update(session, args):
+    repos = build_repo_list(args.get('repos'))
     packages = args.get('packages')
     task = None
     res = None
@@ -121,7 +129,7 @@ def update(session, args):
         host_uuid = session.xenapi.host.get_uuid(host)
         task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
         packages = args.get('packages')
-        command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
+        command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y']
         if packages:
             command.append(packages)
         res = run_command(command)

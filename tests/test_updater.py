@@ -17,7 +17,7 @@ sys.modules['xcpngutils.filelocker'] = mocked_filelocker
 sys.modules['yum'] = mocked_yum
 sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
 
-from updater import check_update, get_proxies, set_proxies, update, REPOS
+from updater import check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
 
 class TestCheckUpdate:
     def test_check_update(self):
@@ -25,7 +25,7 @@ class TestCheckUpdate:
             [{"name": "Dummy Package", "version": "0.0.0", "release": "Dummy released", \
             "description": "Lorem ipsum...", "changelog": null, "url": "http://www.example.com/", "size": "0", \
             "license": "GPLv2 and LGPLv2+ and BSD"}]'
-        res = check_update(None, None)
+        res = check_update(None, {})
         assert json.loads(expected) == json.loads(res)
 
     @mock.patch('mocked_yum.YumBase.doPackageLists', autospec=True)
@@ -33,7 +33,7 @@ class TestCheckUpdate:
         doPackageLists.side_effect = [Exception("Error!")]
 
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
-            check_update(None, None)
+            check_update(None, {})
         doPackageLists.assert_called_once()
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
@@ -45,7 +45,7 @@ class TestUpdate:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_update_with_packages(self, run_command):
@@ -54,7 +54,7 @@ class TestUpdate:
         packages = 'toto tata titi'
         update(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y', packages]
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
         )
 
     def test_update_error(self, run_command):
@@ -63,10 +63,29 @@ class TestUpdate:
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
             update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(REPOS), '-y']
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
+
+    def test_update_with_additional_repos(self, run_command):
+        run_command.side_effect = [0]
+
+        repos = DEFAULT_REPOS + ('totoro', 'lalala')
+        update(mock.MagicMock(), {'repos': 'totoro, lalala'})
+        run_command.assert_called_once_with(
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y']
+        )
+
+    def test_update_with_additional_repos_and_packages(self, run_command):
+        run_command.side_effect = [0]
+
+        repos = DEFAULT_REPOS + ('riri', 'fifi', 'loulou')
+        packages = 'donald hortense'
+        update(mock.MagicMock(), {'repos': 'riri, fifi, loulou', 'packages': packages})
+        run_command.assert_called_once_with(
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y', packages]
+        )
 
 class TestGetProxies:
     def test_get_proxies(self):
