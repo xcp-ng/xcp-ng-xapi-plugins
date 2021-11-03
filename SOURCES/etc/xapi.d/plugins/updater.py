@@ -34,28 +34,21 @@ class OperationLocker(FileLocker):
     def _raise_busy(self):
         raise OperationException('The updater plugin is busy (current operation: {})'.format(self.current_operation))
 
-    def _prelock(self):
-        # 1. Read the current operation from lockfile before timeout or direct lock call.
-        self.current_operation = None
+    def _lock(self):
         try:
-            self.file.seek(0)
-            self.current_operation = self.file.readline().rstrip('\n')
+            super(OperationLocker, self)._lock()
         except Exception:
-            pass
-
-        # 2. If there is no current operation, it's ok we can try to lock the file.
-        if not self.current_operation:
-            return
-
-        # 3. At this point a current operation is running, so:
-        # - If the operation to execute is not 'update', a busy exception is thrown.
-        # - If the next op is 'update' and the current op is the same, an 'already in progress' exception is thrown.
-        # - More precisely, there is only a unique valid case to pass this point => The next op is 'update' and
-        #   the previous op is different.
-        self_is_update = self.operation == 'update'
-        if self_is_update and self.operation == self.current_operation:
-            raise OperationException('Update already in progress')
-        elif not self_is_update:
+            # failed to take the lock, try to report why
+            self.current_operation = None
+            try:
+                with open(self.filename) as f:
+                    self.current_operation = f.readline().rstrip('\n')
+            except Exception:
+                # couldn't open or read the file, might have been deleted, just raise busy without any explanation
+                self._raise_busy()
+            self_is_update = self.operation == 'update'
+            if self_is_update and self.operation == self.current_operation:
+                raise OperationException('Update already in progress')
             self._raise_busy()
 
     def _timeout_reached(self):
