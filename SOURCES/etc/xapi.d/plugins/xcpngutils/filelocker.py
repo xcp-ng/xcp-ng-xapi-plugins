@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from functools import partial
 from xcpngutils import timeout
 import errno
