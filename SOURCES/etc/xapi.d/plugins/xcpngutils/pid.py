@@ -1,5 +1,3 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
 from xcpngutils.filelocker import FileLocker
 import os
 import sys
