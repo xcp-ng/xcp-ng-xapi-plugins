@@ -8,7 +8,7 @@ from raid import check_raid_pool
 @mock.patch('raid.run_command', autospec=True)
 class TestCheckRaidPool:
     def test_raid(self, run_command, fs):
-        run_command.side_effect = [{"stdout": """/dev/md127:
+        run_command.return_value = {"stdout": """/dev/md127:
             Version : 1.0
         Creation Time : Wed May 26 14:31:03 2021
             Raid Level : raid1
@@ -33,7 +33,7 @@ class TestCheckRaidPool:
 
         Number   Major   Minor   RaidDevice State
         2       8        0        0      active sync   /dev/sda
-        -       0        0        1      removed"""}]
+        -       0        0        1      removed"""}
 
         expected = ' \
 {"raid": {"Consistency Policy": "resync", "Working Devices": "1", "Raid Devices": \
@@ -49,7 +49,7 @@ class TestCheckRaidPool:
         run_command.assert_called_once_with(['mdadm', '--detail', '/dev/md127'])
 
     def test_raid_error(self, run_command, fs):
-        run_command.side_effect = [Exception('Error!')]
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             check_raid_pool(None, None)

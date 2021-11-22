@@ -26,7 +26,7 @@ class TestGetHyperthreading:
         run_command.assert_called_with(['xl', 'info', 'threads_per_core'])
 
     def test_hyperthreading_error(self, run_command):
-        run_command.side_effect = [Exception('Error!')]
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             get_hyperthreading(None, None)
