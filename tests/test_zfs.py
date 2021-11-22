@@ -1,13 +1,7 @@
 import json
 import mock
-import pathlib
 import pytest
-import sys
-
-import mocked_xen_api_plugin
-
-sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
+import XenAPIPlugin
 
 from zfs import list_zfs_pools
 
@@ -108,7 +102,7 @@ vol0	special_small_blocks	0	default"""}, OSError(2, 'Error!', 'Error!'), OSError
         res = list_zfs_pools(None, None)
         assert json.loads(res) == json.loads(expected)
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             list_zfs_pools(None, None)
 
         assert e.value.params[0] == '3'
@@ -120,7 +114,7 @@ vol0	special_small_blocks	0	default"""}, OSError(2, 'Error!', 'Error!'), OSError
     def test_zfs_error(self, run_command):
         run_command.side_effect = [Exception('Error!')]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             list_zfs_pools(None, None)
         run_command.assert_called_once_with(['zfs', 'get', '-H', 'all'])
         assert e.value.params[0] == '-1'

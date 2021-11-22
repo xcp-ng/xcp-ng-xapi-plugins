@@ -2,18 +2,8 @@
 
 import json
 import mock
-import pathlib
 import pytest
-import sys
-
-import mocked_configparser
-import mocked_xen_api_plugin
-import mocked_yum
-
-sys.modules['ConfigParser'] = mocked_configparser
-sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.modules['yum'] = mocked_yum
-sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
+import XenAPIPlugin
 
 from updater import check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
 
@@ -30,7 +20,7 @@ class TestCheckUpdate:
     def test_check_update_error(self, doPackageLists, fs):
         doPackageLists.side_effect = [Exception("Error!")]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             check_update(None, {})
         doPackageLists.assert_called_once()
         assert e.value.params[0] == '-1'
@@ -58,7 +48,7 @@ class TestUpdate:
     def test_update_error(self, run_command, fs):
         run_command.side_effect = [Exception("Error!")]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
             ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
@@ -96,7 +86,7 @@ class TestGetProxies:
     def test_get_proxies_error(self, read, fs):
         read.side_effect = [Exception("Error!")]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             get_proxies(None, None)
         read.assert_called_once()
         assert e.value.params[0] == '-1'
@@ -119,7 +109,7 @@ class TestSetProxies:
 
         proxies = ' \
             {"repo_yum": "http://user:password@proxy.example.com:3128", "repo_yum_2": "_none_", "repo_yum_3": "_none_"}'
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             set_proxies(None, {"proxies": proxies})
         write.assert_called_once()
         assert e.value.params[0] == '-1'
