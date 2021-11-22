@@ -122,7 +122,7 @@ true
 
 ## Tests
 
-To run the plugins' unit tests you'll need to install `pytest` and `mock`.
+To run the plugins' unit tests you'll need to install `pytest`, `pyfakefs` and `mock`.
 
 To run all tests you can run:
 ```py

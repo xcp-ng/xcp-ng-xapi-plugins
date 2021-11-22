@@ -5,17 +5,15 @@ import pytest
 import sys
 
 import mocked_xen_api_plugin
-import mocked_filelocker
 
 sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.modules['xcpngutils.filelocker'] = mocked_filelocker
 sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
 
 from raid import check_raid_pool
 
 @mock.patch('raid.run_command', autospec=True)
 class TestCheckRaidPool:
-    def test_raid(self, run_command):
+    def test_raid(self, run_command, fs):
         run_command.side_effect = [{"stdout": """/dev/md127:
             Version : 1.0
         Creation Time : Wed May 26 14:31:03 2021
@@ -56,7 +54,7 @@ class TestCheckRaidPool:
         assert json.loads(res) == json.loads(expected)
         run_command.assert_called_once_with(['mdadm', '--detail', '/dev/md127'])
 
-    def test_raid_error(self, run_command):
+    def test_raid_error(self, run_command, fs):
         run_command.side_effect = [Exception('Error!')]
 
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:

@@ -8,19 +8,17 @@ import sys
 
 import mocked_configparser
 import mocked_xen_api_plugin
-import mocked_filelocker
 import mocked_yum
 
 sys.modules['ConfigParser'] = mocked_configparser
 sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.modules['xcpngutils.filelocker'] = mocked_filelocker
 sys.modules['yum'] = mocked_yum
 sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
 
 from updater import check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
 
 class TestCheckUpdate:
-    def test_check_update(self):
+    def test_check_update(self, fs):
         expected = ' \
             [{"name": "Dummy Package", "version": "0.0.0", "release": "Dummy released", \
             "description": "Lorem ipsum...", "changelog": null, "url": "http://www.example.com/", "size": "0", \
@@ -28,8 +26,8 @@ class TestCheckUpdate:
         res = check_update(None, {})
         assert json.loads(expected) == json.loads(res)
 
-    @mock.patch('mocked_yum.YumBase.doPackageLists', autospec=True)
-    def test_check_update_error(self, doPackageLists):
+    @mock.patch('updater.yum.YumBase.doPackageLists', autospec=True)
+    def test_check_update_error(self, doPackageLists, fs):
         doPackageLists.side_effect = [Exception("Error!")]
 
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
@@ -40,7 +38,7 @@ class TestCheckUpdate:
 
 @mock.patch('updater.run_command', autospec=True)
 class TestUpdate:
-    def test_update(self, run_command):
+    def test_update(self, run_command, fs):
         run_command.side_effect = [0]
 
         update(mock.MagicMock(), {})
@@ -48,7 +46,7 @@ class TestUpdate:
             ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
-    def test_update_with_packages(self, run_command):
+    def test_update_with_packages(self, run_command, fs):
         run_command.side_effect = [0]
 
         packages = 'toto tata titi'
@@ -57,7 +55,7 @@ class TestUpdate:
             ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
         )
 
-    def test_update_error(self, run_command):
+    def test_update_error(self, run_command, fs):
         run_command.side_effect = [Exception("Error!")]
 
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
@@ -68,7 +66,7 @@ class TestUpdate:
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
 
-    def test_update_with_additional_repos(self, run_command):
+    def test_update_with_additional_repos(self, run_command, fs):
         run_command.side_effect = [0]
 
         repos = DEFAULT_REPOS + ('totoro', 'lalala')
@@ -77,7 +75,7 @@ class TestUpdate:
             ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y']
         )
 
-    def test_update_with_additional_repos_and_packages(self, run_command):
+    def test_update_with_additional_repos_and_packages(self, run_command, fs):
         run_command.side_effect = [0]
 
         repos = DEFAULT_REPOS + ('riri', 'fifi', 'loulou')
@@ -88,14 +86,14 @@ class TestUpdate:
         )
 
 class TestGetProxies:
-    def test_get_proxies(self):
+    def test_get_proxies(self, fs):
         expected = ' \
             {"repo_yum": "http://user:password@proxy.example.com:3128", "repo_yum_2": "_none_", "repo_yum_3": "_none_"}'
         res = get_proxies(None, None)
         assert json.loads(expected) == json.loads(res)
 
     @mock.patch('mocked_configparser.ConfigParser.read', autospec=True)
-    def test_get_proxies_error(self, read):
+    def test_get_proxies_error(self, read, fs):
         read.side_effect = [Exception("Error!")]
 
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
@@ -105,21 +103,24 @@ class TestGetProxies:
         assert e.value.params[1] == 'Error!'
 
 class TestSetProxies:
-    @mock.patch('builtins.open', mock.mock_open())
-    def test_set_proxies(self):
+    def test_set_proxies(self, fs):
+        fs.create_dir('/etc/yum.repos.d')
+
         proxies = ' \
             {"repo_yum": "http://user:password@proxy.example.com:3128", "repo_yum_2": "_none_", "repo_yum_3": "_none_"}'
         res = set_proxies(None, {"proxies": proxies})
         assert res == ""
 
-    @mock.patch('builtins.open', autospec=True)
-    def test_set_proxies_error(self, open):
-        open.side_effect = [Exception('Error!')]
+    @mock.patch('mocked_configparser.ConfigParser.write', autospec=True)
+    def test_set_proxies_error(self, write, fs):
+        fs.create_dir('/etc/yum.repos.d')
+
+        write.side_effect = [Exception('Error!')]
 
         proxies = ' \
             {"repo_yum": "http://user:password@proxy.example.com:3128", "repo_yum_2": "_none_", "repo_yum_3": "_none_"}'
         with pytest.raises(mocked_xen_api_plugin.Failure) as e:
             set_proxies(None, {"proxies": proxies})
-        open.assert_called_once()
+        write.assert_called_once()
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
