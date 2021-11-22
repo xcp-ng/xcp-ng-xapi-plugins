@@ -1,13 +1,7 @@
 import json
 import mock
-import pathlib
 import pytest
-import sys
-
-import mocked_xen_api_plugin
-
-sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
+import XenAPIPlugin
 
 from lsblk import list_block_devices
 
@@ -47,7 +41,7 @@ NAME="sda6" KNAME="sda6" PKNAME="sda" SIZE="1073741824" TYPE="part" RO="0" MOUNT
     def test_lsblk_error(self, run_command):
         run_command.side_effect = [Exception('Error!')]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             list_block_devices(None, None)
         run_command.assert_called_once_with(
             ["lsblk", "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"]

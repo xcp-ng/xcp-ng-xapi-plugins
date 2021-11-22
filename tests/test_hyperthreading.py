@@ -1,15 +1,10 @@
 import json
 import mock
-import pathlib
 import pytest
-import sys
-
-import mocked_xen_api_plugin
-
-sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
+import XenAPIPlugin
 
 from hyperthreading import get_hyperthreading
+
 @mock.patch('hyperthreading.run_command', autospec=True)
 class TestGetHyperthreading:
     def test_hyperthreading(self, run_command):
@@ -33,7 +28,7 @@ class TestGetHyperthreading:
     def test_hyperthreading_error(self, run_command):
         run_command.side_effect = [Exception('Error!')]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             get_hyperthreading(None, None)
         run_command.assert_called_with(['xl', 'info', 'threads_per_core'])
         assert e.value.params[0] == '-1'

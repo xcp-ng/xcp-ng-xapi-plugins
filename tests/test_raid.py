@@ -1,13 +1,7 @@
 import json
 import mock
-import pathlib
 import pytest
-import sys
-
-import mocked_xen_api_plugin
-
-sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
-sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
+import XenAPIPlugin
 
 from raid import check_raid_pool
 
@@ -57,7 +51,7 @@ class TestCheckRaidPool:
     def test_raid_error(self, run_command, fs):
         run_command.side_effect = [Exception('Error!')]
 
-        with pytest.raises(mocked_xen_api_plugin.Failure) as e:
+        with pytest.raises(XenAPIPlugin.Failure) as e:
             check_raid_pool(None, None)
         run_command.assert_called_once_with(['mdadm', '--detail', '/dev/md127'])
         assert e.value.params[0] == '-1'
