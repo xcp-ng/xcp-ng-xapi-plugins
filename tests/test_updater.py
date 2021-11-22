@@ -79,6 +79,120 @@ class TestUpdate:
         )
 
 # ==============================================================================
+# Lock: Try to execute a command with a lock already locked.
+# ==============================================================================
+
+@mock.patch('updater.run_command', autospec=True)
+class TestLockFile:
+    @mock.patch('fcntl.flock', autospec=True)
+    def test_check_update_with_empty_locked_file(self, flock, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file)
+
+        flock.side_effect = OSError()
+        run_command.return_value = {}
+
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            check_update(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'The updater plugin is busy (current operation: <UNKNOWN>)'
+
+    @mock.patch('fcntl.flock', autospec=True)
+    def test_check_update_during_check_update(self, flock, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='check_update')
+
+        flock.side_effect = OSError()
+        run_command.return_value = {}
+
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            check_update(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'The updater plugin is busy (current operation: check_update)'
+
+    @mock.patch('fcntl.flock', autospec=True)
+    def test_update_during_check_update(self, flock, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='check_update')
+
+        flock.side_effect = OSError()
+        run_command.return_value = {}
+
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            update(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'The updater plugin is busy (current operation: check_update)'
+
+    @mock.patch('fcntl.flock', autospec=True)
+    def test_ckeck_update_during_update(self, flock, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='update')
+
+        flock.side_effect = OSError()
+        run_command.return_value = {}
+
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            check_update(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'The updater plugin is busy (current operation: update)'
+
+    @mock.patch('fcntl.flock', autospec=True)
+    def test_update_during_update(self, flock, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='update')
+
+        flock.side_effect = OSError()
+        run_command.return_value = {}
+
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            update(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'Update already in progress'
+
+# ==============================================================================
+# Lockfile with content but not locked.
+# ==============================================================================
+
+@mock.patch('updater.run_command', autospec=True)
+class TestNotLockedLockFile:
+    def test_check_update_during_check_update(self, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='check_update')
+        run_command.return_value = {}
+
+        expected = ' \
+            [{"name": "Dummy Package", "version": "0.0.0", "release": "Dummy released", \
+            "description": "Lorem ipsum...", "changelog": null, "url": "http://www.example.com/", "size": "0", \
+            "license": "GPLv2 and LGPLv2+ and BSD"}]'
+        res = check_update(None, {})
+        assert json.loads(expected) == json.loads(res)
+
+    def test_update_during_check_update(self, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='check_update')
+
+        run_command.return_value = {}
+
+        update(mock.MagicMock(), {})
+        run_command.assert_called_once_with(
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+        )
+
+    def test_ckeck_update_during_update(self, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='update')
+        run_command.return_value = {}
+
+        expected = ' \
+            [{"name": "Dummy Package", "version": "0.0.0", "release": "Dummy released", \
+            "description": "Lorem ipsum...", "changelog": null, "url": "http://www.example.com/", "size": "0", \
+            "license": "GPLv2 and LGPLv2+ and BSD"}]'
+        res = check_update(None, {})
+        assert json.loads(expected) == json.loads(res)
+
+    def test_update_during_update(self, run_command, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='update')
+
+        run_command.return_value = {}
+
+        update(mock.MagicMock(), {})
+        run_command.assert_called_once_with(
+            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+        )
+
+# ==============================================================================
 # Proxies.
 # ==============================================================================
 

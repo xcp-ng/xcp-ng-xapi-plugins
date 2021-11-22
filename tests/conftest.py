@@ -1,9 +1,13 @@
 import pathlib
+import pytest
 import sys
 
 import mocked_configparser
 import mocked_xen_api_plugin
 import mocked_yum
+
+def pytest_configure():
+    pytest.plugins_lock_file = '/var/lib/xcp-ng-xapi-plugins/pytest.lock'
 
 # Not installed.
 sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
