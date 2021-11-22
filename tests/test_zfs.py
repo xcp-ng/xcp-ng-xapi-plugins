@@ -112,7 +112,7 @@ vol0	special_small_blocks	0	default"""}, OSError(2, 'Error!', 'Error!'), OSError
         run_command.assert_called_with(['zfs', 'get', '-H', 'all'])
 
     def test_zfs_error(self, run_command):
-        run_command.side_effect = [Exception('Error!')]
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             list_zfs_pools(None, None)

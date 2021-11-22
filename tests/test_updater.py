@@ -21,7 +21,7 @@ class TestCheckUpdate:
 
     @mock.patch('updater.yum.YumBase.doPackageLists', autospec=True)
     def test_check_update_error(self, doPackageLists, fs):
-        doPackageLists.side_effect = [Exception("Error!")]
+        doPackageLists.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             check_update(None, {})
@@ -32,7 +32,7 @@ class TestCheckUpdate:
 @mock.patch('updater.run_command', autospec=True)
 class TestUpdate:
     def test_update(self, run_command, fs):
-        run_command.side_effect = [0]
+        run_command.return_value = {}
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
@@ -40,7 +40,7 @@ class TestUpdate:
         )
 
     def test_update_with_packages(self, run_command, fs):
-        run_command.side_effect = [0]
+        run_command.return_value = {}
 
         packages = 'toto tata titi'
         update(mock.MagicMock(), {'packages': packages})
@@ -49,7 +49,7 @@ class TestUpdate:
         )
 
     def test_update_error(self, run_command, fs):
-        run_command.side_effect = [Exception("Error!")]
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             update(mock.MagicMock(), {})
@@ -60,7 +60,7 @@ class TestUpdate:
         assert e.value.params[1] == 'Error!'
 
     def test_update_with_additional_repos(self, run_command, fs):
-        run_command.side_effect = [0]
+        run_command.return_value = {}
 
         repos = DEFAULT_REPOS + ('totoro', 'lalala')
         update(mock.MagicMock(), {'repos': 'totoro, lalala'})
@@ -69,7 +69,7 @@ class TestUpdate:
         )
 
     def test_update_with_additional_repos_and_packages(self, run_command, fs):
-        run_command.side_effect = [0]
+        run_command.return_value = {}
 
         repos = DEFAULT_REPOS + ('riri', 'fifi', 'loulou')
         packages = 'donald hortense'
@@ -128,7 +128,7 @@ class TestGetProxies:
 
     def test_get_proxies_error(self, ConfigParser, fs):
         with mock.patch.object(ConfigParser, 'read') as read:
-            read.side_effect = [Exception("Error!")]
+            read.side_effect = Exception('Error!')
 
             with pytest.raises(XenAPIPlugin.Failure) as e:
                 get_proxies(None, None)
@@ -148,7 +148,7 @@ class TestSetProxies:
         fs.create_dir('/etc/yum.repos.d')
 
         with mock.patch.object(ConfigParser, 'write') as write:
-            write.side_effect = [Exception('Error!')]
+            write.side_effect = Exception('Error!')
             with pytest.raises(XenAPIPlugin.Failure) as e:
                 set_proxies(None, {"proxies": CONFIG_PROXIES})
             write.assert_called_once()

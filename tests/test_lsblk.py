@@ -8,8 +8,8 @@ from lsblk import list_block_devices
 @mock.patch('lsblk.run_command', autospec=True)
 class TestListBlockDevices:
     def test_lsblk(self, run_command):
-        run_command.side_effect = [
-            {"stdout": b'''NAME="sdb" KNAME="sdb" PKNAME="" SIZE="64424509440" TYPE="disk" RO="0" MOUNTPOINT=""
+        run_command.return_value = {
+            "stdout": b'''NAME="sdb" KNAME="sdb" PKNAME="" SIZE="64424509440" TYPE="disk" RO="0" MOUNTPOINT=""
 NAME="sda" KNAME="sda" PKNAME="" SIZE="64424509440" TYPE="disk" RO="0" MOUNTPOINT=""
 NAME="sda4" KNAME="sda4" PKNAME="sda" SIZE="536870912" TYPE="part" RO="0" MOUNTPOINT=""
 NAME="sda2" KNAME="sda2" PKNAME="sda" SIZE="19327352832" TYPE="part" RO="0" MOUNTPOINT=""
@@ -18,7 +18,7 @@ NAME="sda3" KNAME="sda3" PKNAME="sda" SIZE="19863158272" TYPE="part" RO="0" MOUN
 NAME="XSLocalEXT--1fad55d2--4f07--8145--c78a--297b173e06b0-1fad55d2--4f07--8145--c78a--297b173e06b0" KNAME="dm-0" \
 PKNAME="sda3" SIZE="19847446528" TYPE="lvm" RO="0" MOUNTPOINT="/run/sr-mount/1fad55d2-4f07-8145-c78a-297b173e06b0"
 NAME="sda1" KNAME="sda1" PKNAME="sda" SIZE="19327352832" TYPE="part" RO="0" MOUNTPOINT="/"
-NAME="sda6" KNAME="sda6" PKNAME="sda" SIZE="1073741824" TYPE="part" RO="0" MOUNTPOINT="[SWAP]"'''}]
+NAME="sda6" KNAME="sda6" PKNAME="sda" SIZE="1073741824" TYPE="part" RO="0" MOUNTPOINT="[SWAP]"'''}
 
         expected = ' \
 {"blockdevices": [{"kname": "sdb", "name": "sdb", "pkname": "", "mountpoint": "", "ro": "0", "type": \
@@ -39,7 +39,7 @@ NAME="sda6" KNAME="sda6" PKNAME="sda" SIZE="1073741824" TYPE="part" RO="0" MOUNT
         run_command.assert_called_once_with(["lsblk", "-P", "-b", "-o", "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"])
 
     def test_lsblk_error(self, run_command):
-        run_command.side_effect = [Exception('Error!')]
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             list_block_devices(None, None)

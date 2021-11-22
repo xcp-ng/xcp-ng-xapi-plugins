@@ -9,14 +9,14 @@ from netdata import is_netdata_installed, install_netdata, get_netdata_api_key
 @mock.patch('netdata.run_command', autospec=True)
 class TestIsIntalled:
     def test_is_netdata_installed(self, run_command, fs):
-        run_command.side_effect = ["0"]
+        run_command.return_value = {}
 
         res = is_netdata_installed(None, None)
         assert json.loads(res)
         run_command.assert_called_once_with(['service', 'netdata', 'status'])
 
     def test_is_netdata_installed_not(self, run_command, fs):
-        run_command.side_effect = [Exception('Error!')]
+        run_command.side_effect = Exception('Error!')
 
         res = is_netdata_installed(None, None)
         assert not json.loads(res)
@@ -28,8 +28,8 @@ class TestInstall:
     def test_install_netdata(self, run_command, install_package, fs):
         fs.create_dir('/etc/netdata')
 
-        install_package.side_effect = [None]
-        run_command.side_effect = [None]
+        install_package.return_value = None
+        run_command.return_value = {}
 
         res = install_netdata(None, {'api_key': 'key', 'destination': 'dest'})
         assert json.loads(res)
@@ -37,7 +37,7 @@ class TestInstall:
         run_command.assert_called_once_with(['service', 'netdata', 'restart'])
 
     def test_install_netdata_error_at_install(self, run_command, install_package, fs):
-        install_package.side_effect = [Exception('Error!')]
+        install_package.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             install_netdata(None, {'api_key': 'key', 'destination': 'dest'})
@@ -49,8 +49,8 @@ class TestInstall:
     def test_install_netdata_error_at_service(self, run_command, install_package, fs):
         fs.create_file('/etc/netdata/stream.conf')
 
-        install_package.side_effect = [None]
-        run_command.side_effect = [Exception('Error!')]
+        install_package.return_value = None
+        run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             install_netdata(None, {'api_key': 'key', 'destination': 'dest'})
