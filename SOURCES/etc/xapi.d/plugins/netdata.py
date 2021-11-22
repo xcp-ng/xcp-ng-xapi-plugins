@@ -12,17 +12,7 @@ import XenAPIPlugin
 
 sys.path.append('.')
 from xcpngutils import configure_logging, error_wrapped, install_package, run_command
-from xcpngutils.filelocker import FileLocker
-
-
-class OperationLocker(FileLocker):
-    def _lock(self):
-        try:
-            # noinspection PyProtectedMember
-            super(OperationLocker, self)._lock()
-        except Exception:
-            raise Exception('The plugin is busy.')
-
+from xcpngutils.operationlocker import OperationLocker
 
 netdata_streaming_content = '''
 # do not edit, managed by XCP-ng
