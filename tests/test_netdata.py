@@ -1,5 +1,3 @@
-#!/usr/bin/env python2
-
 import errno
 import json
 import mock
