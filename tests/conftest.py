@@ -5,8 +5,11 @@ import mocked_configparser
 import mocked_xen_api_plugin
 import mocked_yum
 
-sys.modules['ConfigParser'] = mocked_configparser
+# Not installed.
 sys.modules['XenAPIPlugin'] = mocked_xen_api_plugin
+
+# Not installed and must be mocked in specific tests.
+sys.modules['ConfigParser'] = mocked_configparser
 
 # Mock yum globally, module is not necessarily present on the system.
 sys.modules['yum'] = mocked_yum
