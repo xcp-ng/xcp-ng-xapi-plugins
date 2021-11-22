@@ -8,19 +8,9 @@ import XenAPIPlugin
 
 sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
-from xcpngutils.filelocker import FileLocker
+from xcpngutils.operationlocker import OperationLocker
 
 _LOGGER = configure_logging('raid')
-
-
-class OperationLocker(FileLocker):
-    def _lock(self):
-        try:
-            # noinspection PyProtectedMember
-            super(OperationLocker, self)._lock()
-        except Exception:
-            raise Exception('The plugin is busy.')
-
 
 # returns {"raid": {"State": "clean", (...)},
 #     "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], (...)]}
