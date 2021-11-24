@@ -1,9 +1,9 @@
 from xcpngutils.filelocker import FileLocker
 
 class OperationLocker(FileLocker):
-    def _lock(self):
+    def lock(self, override_timeout=None):
         try:
             # noinspection PyProtectedMember
-            super(OperationLocker, self)._lock()
+            super(OperationLocker, self).lock(override_timeout)
         except Exception:
             raise Exception('The plugin is busy.')
