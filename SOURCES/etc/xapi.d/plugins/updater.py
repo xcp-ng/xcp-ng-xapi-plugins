@@ -31,31 +31,47 @@ class OperationLocker(FileLocker):
         )
         self.operation = operation
 
-    def _raise_busy(self):
-        op = self.current_operation
-        if not op:
-            op = '<UNKNOWN>'
-        raise OperationException('The updater plugin is busy (current operation: {})'.format(op))
-
-    def _lock(self):
+    def lock(self, override_timeout=None):
         # Current op must be initialized here because if timeout is reached,
         # callbacks like `_raise_busy` are called and the attribute must be defined.
         self.current_operation = None
 
         try:
-            super(OperationLocker, self)._lock()
-        except Exception:
-            # Failed to take the lock, try to report why.
+            # First try without timeout.
             try:
-                with open(self.filename) as f:
-                    self.current_operation = f.readline().rstrip('\n')
+                super(OperationLocker, self).lock(override_timeout=0)
+                return # Perfect!
             except Exception:
-                # Couldn't open or read the file, might have been deleted, just raise busy without any explanation.
-                self._raise_busy()
-            self_is_update = self.operation == 'update'
-            if self_is_update and self.operation == self.current_operation:
-                raise OperationException('Update already in progress')
+                if self.timeout <= 0:
+                    raise
+
+            assert self.timeout > 0 # Ensure we use a timeout. Useless otherwise.
+
+            # Check current operation before retry with timeout.
+            self._update_and_check_current_operation()
+            super(OperationLocker, self).lock()
+        except Exception:
+            self._update_and_check_current_operation()
             self._raise_busy()
+
+    def _update_and_check_current_operation(self):
+        try:
+            with open(self.filename) as f:
+                self.current_operation = f.readline().rstrip('\n')
+        except Exception:
+            # Couldn't open or read the file, might have been deleted, just raise busy without any explanation.
+            self._raise_busy()
+
+        # If this is an update, don't wait.
+        self_is_update = self.operation == 'update'
+        if self_is_update and self.operation == self.current_operation:
+            raise OperationException('Update already in progress')
+
+    def _raise_busy(self):
+        op = self.current_operation
+        if not op:
+            op = '<UNKNOWN>'
+        raise OperationException('The updater plugin is busy (current operation: {})'.format(op))
 
     def _timeout_reached(self):
         self._raise_busy()
