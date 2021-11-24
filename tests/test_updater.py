@@ -1,7 +1,10 @@
 from ConfigParser import ConfigParser
+import errno
+import fcntl
 import json
 import mock
 import pytest
+import time
 import XenAPIPlugin
 
 from updater import check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
@@ -82,65 +85,116 @@ class TestUpdate:
 # Lock: Try to execute a command with a lock already locked.
 # ==============================================================================
 
+# Must be mocked after usage of fixture `fs`, because this last one
+# has a modified version of flock. ;)
+def mocked_flock_locked(fd, flags):
+    if flags & fcntl.LOCK_NB:
+        raise IOError(errno.EWOULDBLOCK, '')
+    time.sleep(2) # We don't want to wait a long time in case of failure in tests.
+    raise Exception('Too long!')
+
+def mocked_flock_wait_and_lock(fd, flags):
+    assert not (flags & fcntl.LOCK_NB)
+    time.sleep(0.5)
+
+@mock.patch('xcpngutils.TimeoutException', autospec=True)
+@mock.patch('updater.OperationLocker.timeout', new_callable=mock.PropertyMock)
 @mock.patch('updater.run_command', autospec=True)
-class TestLockFile:
-    @mock.patch('fcntl.flock', autospec=True)
-    def test_check_update_with_empty_locked_file(self, flock, run_command, fs):
+class TestExceptionLockedFile:
+    def test_check_update_with_empty_locked_file(self, run_command, timeout, TimeoutException, fs):
         fs.create_file(pytest.plugins_lock_file)
-
-        flock.side_effect = OSError()
         run_command.return_value = {}
+        timeout.return_value = 0
 
-        with pytest.raises(XenAPIPlugin.Failure) as e:
-            check_update(mock.MagicMock(), {})
+        with mock.patch('fcntl.flock', wraps=mocked_flock_locked) as flock:
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                check_update(mock.MagicMock(), {})
+            flock.assert_called_once_with(mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        TimeoutException.assert_not_called()
+
+        assert timeout.call_args_list == [((0,),), ()]
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'The updater plugin is busy (current operation: <UNKNOWN>)'
 
-    @mock.patch('fcntl.flock', autospec=True)
-    def test_check_update_during_check_update(self, flock, run_command, fs):
+    def test_check_update_during_check_update(self, run_command, timeout, TimeoutException, fs):
         fs.create_file(pytest.plugins_lock_file, contents='check_update')
-
-        flock.side_effect = OSError()
         run_command.return_value = {}
+        timeout.return_value = 0
 
-        with pytest.raises(XenAPIPlugin.Failure) as e:
-            check_update(mock.MagicMock(), {})
+        with mock.patch('fcntl.flock', wraps=mocked_flock_locked) as flock:
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                check_update(mock.MagicMock(), {})
+            flock.assert_called_once_with(mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        TimeoutException.assert_not_called()
+
+        assert timeout.call_args_list == [((0,),), ()]
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'The updater plugin is busy (current operation: check_update)'
 
-    @mock.patch('fcntl.flock', autospec=True)
-    def test_update_during_check_update(self, flock, run_command, fs):
+    def test_update_during_check_update(self, run_command, timeout, TimeoutException, fs):
         fs.create_file(pytest.plugins_lock_file, contents='check_update')
-
-        flock.side_effect = OSError()
         run_command.return_value = {}
+        timeout.return_value = 1 # We don't want to wait a long time in the unit tests. ;)
 
-        with pytest.raises(XenAPIPlugin.Failure) as e:
+        with mock.patch('fcntl.flock', wraps=mocked_flock_locked) as flock:
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                update(mock.MagicMock(), {})
+            # Try a firstime without timeout and retry a second time with timer.
+            assert flock.call_args_list == [((mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB),), ((mock.ANY, fcntl.LOCK_EX),)]
+        TimeoutException.assert_called_once()
+
+        # Note: By default we use 10s of timeout on `update` command.
+        # The forced value of 0.1 is not set using the timeout setter, only the default value of 10.
+        # The remaining calls without value are just the timeout getter.
+        assert timeout.call_args_list == [((10,),), (), (), ()]
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'The updater plugin is busy (current operation: check_update)'
+
+    def test_update_during_check_update_before_timeout(self, run_command, timeout, TimeoutException, fs):
+        fs.create_file(pytest.plugins_lock_file, contents='check_update')
+        run_command.return_value = {}
+        timeout.return_value = 1
+
+        with mock.patch('fcntl.flock', wraps=mocked_flock_wait_and_lock) as flock:
             update(mock.MagicMock(), {})
-        assert e.value.params[0] == '-1'
-        assert e.value.params[1] == 'The updater plugin is busy (current operation: check_update)'
+            assert flock.call_args_list == [
+                ((mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB),),
+                ((mock.ANY, fcntl.LOCK_EX,),),
+                ((mock.ANY, fcntl.LOCK_UN,),)
+            ]
+        TimeoutException.assert_not_called() # Success. \o/
 
-    @mock.patch('fcntl.flock', autospec=True)
-    def test_ckeck_update_during_update(self, flock, run_command, fs):
+        assert timeout.call_args_list == [((10,),), (), (), ()]
+
+    def test_ckeck_update_during_update(self, run_command, timeout, TimeoutException, fs):
         fs.create_file(pytest.plugins_lock_file, contents='update')
-
-        flock.side_effect = OSError()
         run_command.return_value = {}
+        timeout.return_value = 0
 
-        with pytest.raises(XenAPIPlugin.Failure) as e:
-            check_update(mock.MagicMock(), {})
+        with mock.patch('fcntl.flock', wraps=mocked_flock_locked) as flock:
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                check_update(mock.MagicMock(), {})
+            flock.assert_called_once_with(mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        TimeoutException.assert_not_called()
+
+        assert timeout.call_args_list == [((0,),), ()]
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'The updater plugin is busy (current operation: update)'
 
-    @mock.patch('fcntl.flock', autospec=True)
-    def test_update_during_update(self, flock, run_command, fs):
+    def test_update_during_update(self, run_command, timeout, TimeoutException, fs):
         fs.create_file(pytest.plugins_lock_file, contents='update')
-
-        flock.side_effect = OSError()
         run_command.return_value = {}
+        timeout.return_value = 1
 
-        with pytest.raises(XenAPIPlugin.Failure) as e:
-            update(mock.MagicMock(), {})
+        # When an update is already in progress and if we try to run another update command,
+        # we throw an exception before timeout. So there is only one lock test.
+        with mock.patch('fcntl.flock', wraps=mocked_flock_locked) as flock:
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                update(mock.MagicMock(), {})
+            flock.assert_called_once_with(mock.ANY, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        TimeoutException.assert_not_called()
+
+        assert timeout.call_args_list == [((10,),), (), ()]
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Update already in progress'
 

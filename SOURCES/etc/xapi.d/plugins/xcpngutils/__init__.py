@@ -69,19 +69,22 @@ def run_command(command):
     return result
 
 
+class TimeoutException(Exception):
+    pass
+
 @contextmanager
 def timeout(seconds):
     def handler(signum, frame):
-        pass
+        raise TimeoutException()
 
-    oldHandler = signal.signal(signal.SIGALRM, handler)
+    old_handler = signal.signal(signal.SIGALRM, handler)
 
     try:
         signal.alarm(seconds)
         yield
     finally:
         signal.alarm(0)
-        signal.signal(signal.SIGALRM, oldHandler)
+        signal.signal(signal.SIGALRM, old_handler)
 
 
 def raise_plugin_error(code, message, details='', backtrace=''):

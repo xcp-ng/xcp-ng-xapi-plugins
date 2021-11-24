@@ -1,5 +1,5 @@
 from functools import partial
-from xcpngutils import timeout
+from xcpngutils import TimeoutException, timeout
 import errno
 import fcntl
 import os
@@ -8,8 +8,28 @@ import sys
 
 FILE_LOCKER_DIRECTORY = "/var/run/"
 
-class FileLockerError(Exception):
-    pass
+def safe_flock(file, flags):
+    filename = file.name
+
+    while True:
+        try:
+            fd = file.fileno()
+            fcntl.flock(fd, flags)
+            return
+        except IOError as e:
+            if e.errno == errno.EINTR:
+                continue
+
+            if e.errno != errno.EBADF and e.errno != errno.EINVAL:
+                raise
+
+            # Retry if file has been removed.
+            stat = os.fstat(fd)
+            if stat.st_nlink or (flags & fcntl.LOCK_UN):
+                raise e
+
+            file.close()
+            file = open(filename, 'a+')
 
 class FileLocker(object):
     __slots__ = ('pid', 'lockname', 'filename', 'previous_signal', 'file', 'timeout', 'auto_remove')
@@ -29,41 +49,28 @@ class FileLocker(object):
         self.auto_remove = auto_remove
 
     def __del__(self):
-        self._unlock()
+        self.unlock()
 
     def __enter__(self):
-        self._lock()
+        self.lock()
         return self
 
     def __exit__(self, exception_type, exception_value, traceback):
-        self._unlock()
+        self.unlock()
 
-    def _lock(self):
+    def lock(self, override_timeout=None):
+        cur_timeout = override_timeout if override_timeout is not None else self.timeout
         try:
-            while True:
-                self.file = open(self.filename, 'a+')
-                fd = self.file.fileno()
-                if self.timeout <= 0:
-                    self._prelock()
-                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-                else:
-                    try:
-                        self._prelock()
-                        with timeout(self.timeout):
-                            fcntl.flock(fd, fcntl.LOCK_EX)
-                    except IOError as error:
-                        if error.errno != errno.EINTR:
-                            raise error
-                        self._timeout_reached()
-                        raise FileLockerError('Timeout reached')
-
-                # Retry if file has been removed.
-                # TODO: I'm not sure if it's a good idea to retry when timeout expires.
-                # Maybe avoid this behavior.
-                stat = os.fstat(fd)
-                if stat.st_nlink:
-                    break
-                self.file.close()
+            self.file = open(self.filename, 'a+')
+            if cur_timeout <= 0:
+                safe_flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            else:
+                try:
+                    with timeout(cur_timeout):
+                        safe_flock(self.file, fcntl.LOCK_EX)
+                except TimeoutException as e:
+                    self._timeout_reached()
+                    raise Exception('Timeout reached') from e
         except Exception:
             if self.file:
                 self.file.close()
@@ -73,7 +80,7 @@ class FileLocker(object):
         self._register_signal_handler()
         self._locked()
 
-    def _unlock(self):
+    def unlock(self):
         file = self.file
         if not file:
             return
@@ -92,7 +99,7 @@ class FileLocker(object):
                 pass
 
         try:
-            fcntl.flock(file.fileno(), fcntl.LOCK_UN)
+            safe_flock(file, fcntl.LOCK_UN)
         except IOError as error:
             if error.errno != errno.EBADF:
                 raise
@@ -109,7 +116,7 @@ class FileLocker(object):
         return os.path.abspath(os.path.join(dir, filename))
 
     def _handle_sigterm(self, signum, frame):
-        self._unlock()
+        self.unlock()
         raise SystemExit(1)
 
     def _register_signal_handler(self):
@@ -118,9 +125,6 @@ class FileLocker(object):
     def _unregister_signal_handler(self):
         signal.signal(signal.SIGTERM, self.previous_signal)
         self.previous_signal = None
-
-    def _prelock(self):
-        pass
 
     def _timeout_reached(self):
         pass
