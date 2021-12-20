@@ -68,9 +68,9 @@ class FileLocker(object):
                 try:
                     with timeout(cur_timeout):
                         safe_flock(self.file, fcntl.LOCK_EX)
-                except TimeoutException as e:
+                except TimeoutException:
                     self._timeout_reached()
-                    raise Exception('Timeout reached') from e
+                    raise Exception('Timeout reached')
         except Exception:
             if self.file:
                 self.file.close()
