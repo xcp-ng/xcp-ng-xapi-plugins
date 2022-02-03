@@ -64,8 +64,11 @@ def configure_logging(name):
 
 
 def run_command(command):
-    res = subprocess.run(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE, check=True)
-    result = {'stdout': res.stdout, 'stderr': res.stderr, 'command': command}
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout, stderr = process.communicate()
+    if process.returncode:
+        raise subprocess.CalledProcessError(process.returncode, commmand, None)
+    result = {'stdout': stdout, 'stderr': stderr, 'command': command}
     return result
 
 
