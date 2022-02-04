@@ -112,7 +112,4 @@ def error_wrapped(func):
 
 
 def install_package(package_name):
-    command = ['yum', 'install', '-y', package_name]
-    result = run_command(command)
-    if result['exit'] != 0:
-        raise_plugin_error('-1', str(result), backtrace=traceback.format_exc())
+    return run_command(['yum', 'install', '-y', package_name])
