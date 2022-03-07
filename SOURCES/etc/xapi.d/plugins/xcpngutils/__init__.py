@@ -67,7 +67,7 @@ def run_command(command):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     if process.returncode:
-        raise subprocess.CalledProcessError(process.returncode, commmand, None)
+        raise subprocess.CalledProcessError(process.returncode, command, None)
     result = {'stdout': stdout, 'stderr': stderr, 'command': command}
     return result
 
