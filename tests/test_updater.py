@@ -39,7 +39,7 @@ class TestUpdate:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_update_with_packages(self, run_command, fs):
@@ -48,7 +48,7 @@ class TestUpdate:
         packages = 'toto tata titi'
         update(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
         )
 
     def test_update_error(self, run_command, fs):
@@ -57,7 +57,7 @@ class TestUpdate:
         with pytest.raises(XenAPIPlugin.Failure) as e:
             update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
@@ -68,7 +68,7 @@ class TestUpdate:
         repos = DEFAULT_REPOS + ('totoro', 'lalala')
         update(mock.MagicMock(), {'repos': 'totoro, lalala'})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y']
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
         )
 
     def test_update_with_additional_repos_and_packages(self, run_command, fs):
@@ -78,7 +78,7 @@ class TestUpdate:
         packages = 'donald hortense'
         update(mock.MagicMock(), {'repos': 'riri, fifi, loulou', 'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y', packages]
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y', packages]
         )
 
 # ==============================================================================
@@ -222,7 +222,7 @@ class TestNotLockedLockFile:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_ckeck_update_during_update(self, run_command, fs):
@@ -243,7 +243,7 @@ class TestNotLockedLockFile:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
 # ==============================================================================
