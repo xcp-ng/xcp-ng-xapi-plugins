@@ -143,7 +143,7 @@ def update(session, args):
         host_uuid = session.xenapi.host.get_uuid(host)
         task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
         packages = args.get('packages')
-        command = ['yum', 'update', '--disablerepo="*"', '--enablerepo=' + ','.join(repos), '-y']
+        command = ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
         if packages:
             command.append(packages)
         res = run_command(command)
