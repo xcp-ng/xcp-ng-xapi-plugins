@@ -20,6 +20,66 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=zfs.py fn=list_zfs_pools
 ```
 (the most pertinent parameter is `mountpoint`)
 
+## XCP-ng LVM
+
+A xapi plugin to list, create and destroy PVs, VGs and LVMs on a host.
+
+### Helpers to list groups and volumes
+
+#### `list_physical_volumes`:
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=list_physical_volumes
+{"/dev/nvme0n1": {"attributes": "a--", "capacity": 1000203091968, "free": 0, "vg_name": "local_group", "format": "lvm2"}}
+```
+
+#### `list_volume_groups`:
+```
+$ # `vg_name` arg is optional, it's used to limit the results.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=list_volume_groups args:vg_name=<group>
+{"local_group": {"capacity": 1000203091968, "sn_count": 0, "free": 0, "pv_count": 1, "lv_count": 4, "attributes": "wz--n-"}}
+```
+
+#### `list_logical_volumes`:
+```
+$ # Like for `list_volume_groups`, `vg_name` arg is optional.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=list_logical_volumes args:vg_name=<group>
+{"thin_device": {"attributes": "twi-aotz--", "capacity": 999951433728, "pool": "", "vg_name": "local_group"}, "xcp-persistent-redo-log_00000": {"attributes": "Vwi-aotz--", "capacity": 272629760, "pool": "thin_device", "vg_name": "local_group"}, "xcp-persistent-ha-statefile_00000": {"attributes": "Vwi-aotz--", "capacity": 8388608, "pool": "thin_device", "vg_name": "local_group"}, "xcp-persistent-database_00000": {"attributes": "Vwi-aotz--", "capacity": 1077936128, "pool": "thin_device", "vg_name": "local_group"}}
+```
+
+### Creation of groups
+
+#### `create_physical_volume`:
+```
+$ # A device comma-separated list of devices is necessary.
+$ # If a FS already exists, it can be ignored using a boolean arg: `ignore_existing_filesystems`.
+$ # Also it's possible to ignore FS and other PV errors using the boolean arg: `force`.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=create_physical_volume args:devices=<device_list>
+{}
+```
+
+#### `create_volume_group`:
+```
+$ # Note: the `force` arg can be used to recreate the VG.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=create_volume_group args:vg_name=<group> devices=<device_list>
+{}
+```
+
+#### `create_thin_pool`:
+```
+$ # This method is used to create a logical thin volume in a VG using 100% of the free space.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=create_thin_pool args:vg_name=<group> lv_name=<logical_name>
+{}
+```
+
+### Destruction
+
+#### `destroy_volume_group`:
+```
+$ # Note: the `force` arg can be used to remove existing volumes.
+$ xe host-call-plugin host-uuid=<uuid> plugin=lvm.py fn=destroy_volume_group args:vg_name=<group>
+{}
+```
+
 ## XCP-ng RAID status check
 
 A xapi plugin to get the current state of the raid devices on the host.

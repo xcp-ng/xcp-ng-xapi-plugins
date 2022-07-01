@@ -63,12 +63,13 @@ def configure_logging(name):
     return logger
 
 
-def run_command(command):
+def run_command(command, check=True):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
-    if process.returncode:
-        raise subprocess.CalledProcessError(process.returncode, command, None)
-    result = {'stdout': stdout, 'stderr': stderr, 'command': command}
+    code = process.returncode
+    if check and code != 0:
+        raise subprocess.CalledProcessError(code, command, None)
+    result = {'stdout': stdout, 'stderr': stderr, 'command': command, 'returncode': code}
     return result
 
 
@@ -90,8 +91,25 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, old_handler)
 
 
+def strtobool(str):
+    # Note: `distutils` package is deprecated and slated for removal in Python 3.12.
+    # There is not alternative for strtobool.
+    # See: https://peps.python.org/pep-0632/#migration-advice
+    # So this is a custom implementation with differences:
+    # - A boolean is returned instead of integer
+    # - Empty string and None are supported (False is returned in this case)
+    if not str:
+        return False
+    str = str.lower()
+    if str in ('y', 'yes', 't', 'true', 'on', '1'):
+        return True
+    if str in ('n', 'no', 'f', 'false', 'off', '0'):
+        return False
+    raise ValueError("invalid truth value '{}'".format(str))
+
+
 def raise_plugin_error(code, message, details='', backtrace=''):
-    raise XenAPIPlugin.Failure(code, [message, details, backtrace])
+    raise XenAPIPlugin.Failure(str(code), [message, details, backtrace])
 
 
 def error_wrapped(func):
