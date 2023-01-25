@@ -1,9 +1,12 @@
 import json
 import mock
 import pytest
+import subprocess
 import XenAPIPlugin
 
 from raid import check_raid_pool
+
+MDADM_DETAIL_CMD = ['mdadm', '--detail', '/dev/md127']
 
 @mock.patch('raid.run_command', autospec=True)
 class TestCheckRaidPool:
@@ -46,16 +49,22 @@ class TestCheckRaidPool:
 
         res = check_raid_pool(None, None)
         assert json.loads(res) == json.loads(expected)
-        run_command.assert_called_once_with(['mdadm', '--detail', '/dev/md127'])
+        run_command.assert_called_once_with(MDADM_DETAIL_CMD)
 
     def test_raid_error(self, run_command, fs):
         run_command.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             check_raid_pool(None, None)
-        run_command.assert_called_once_with(['mdadm', '--detail', '/dev/md127'])
+        run_command.assert_called_once_with(MDADM_DETAIL_CMD)
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
+
+    def test_raid_missing(self, run_command, fs):
+        run_command.side_effect = subprocess.CalledProcessError(1, MDADM_DETAIL_CMD, None)
+        res = check_raid_pool(None, None)
+        assert json.loads(res) == json.loads("{}")
+        run_command.assert_called_once_with(MDADM_DETAIL_CMD)
 
     # TODO:
     # @mock.patch('xcpngutils.run_command', autospec=True)

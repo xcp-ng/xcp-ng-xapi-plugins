@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import json
+import subprocess
 import sys
 
 import XenAPIPlugin
@@ -18,7 +19,11 @@ _LOGGER = configure_logging('raid')
 def check_raid_pool(session, args):
     device = '/dev/md127'
     with OperationLocker():
-        result = run_command(['mdadm', '--detail', device])
+        try:
+            result = run_command(['mdadm', '--detail', device])
+        except subprocess.CalledProcessError:
+            # No RAID
+            return json.dumps({})
 
         lines = [line.strip() for line in result['stdout'].splitlines()]
         lines = [line for line in lines if len(line) > 0]
