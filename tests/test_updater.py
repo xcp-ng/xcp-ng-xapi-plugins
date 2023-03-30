@@ -7,11 +7,28 @@ import pytest
 import time
 import XenAPIPlugin
 
-from updater import check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
+from updater import install, check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
 
 # ==============================================================================
-# Update.
+# Install/Update.
 # ==============================================================================
+
+@mock.patch('updater.run_command', autospec=True)
+class TestInstall:
+    def test_install(self, run_command, fs):
+        run_command.return_value = {}
+
+        packages = 'toto tata titi'
+        install(mock.MagicMock(), {'packages': packages})
+        run_command.assert_called_once_with(
+            ['yum', 'install', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+        )
+
+    def test_install_without_packages(self, run_command, fs):
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            install(mock.MagicMock(), {})
+        assert e.value.params[0] == '-1'
+        assert e.value.params[1] == 'Missing or empty argument `packages`'
 
 class TestCheckUpdate:
     def test_check_update(self, fs):
