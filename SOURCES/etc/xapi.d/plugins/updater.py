@@ -112,6 +112,48 @@ def build_repo_list(additional_repos):
         repos += [x.strip() for x in additional_repos.split(',')]
     return repos
 
+def install_helper(session, args, action):
+    assert action in ('install', 'update')
+
+    packages = args.get('packages')
+    if action == 'install' and not packages:
+        raise Exception('Missing or empty argument `packages`')
+
+    repos = build_repo_list(args.get('repos'))
+    task = None
+    res = None
+    error = None
+    try:
+        host = session.xenapi.session.get_this_host(session.handle)
+        host_name = session.xenapi.host.get_name_label(host)
+        host_uuid = session.xenapi.host.get_uuid(host)
+
+        if not packages:
+            task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
+        else:
+            task = session.xenapi.task.create('%s %s on host %s (%s)' % (
+                action.capitalize(), packages, host_name, host_uuid
+            ), '')
+
+        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+        if packages:
+            command.append(packages)
+        res = run_command(command)
+        session.xenapi.task.set_status(task, 'success')
+    except Exception as e:
+        error = e
+    finally:
+        if task:
+            session.xenapi.task.destroy(task)
+        if error:
+            raise error
+        return json.dumps(res)
+
+@error_wrapped
+@operationlock(timeout=10)
+def install(session, args):
+    return install_helper(session, args, 'install')
+
 @error_wrapped
 @operationlock()
 def check_update(session, args):
@@ -133,30 +175,7 @@ def check_update(session, args):
 @error_wrapped
 @operationlock(timeout=10)
 def update(session, args):
-    repos = build_repo_list(args.get('repos'))
-    task = None
-    res = None
-    error = None
-    try:
-        host = session.xenapi.session.get_this_host(session.handle)
-        host_name = session.xenapi.host.get_name_label(host)
-        host_uuid = session.xenapi.host.get_uuid(host)
-        task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
-        packages = args.get('packages')
-        command = ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
-        if packages:
-            command.append(packages)
-        res = run_command(command)
-        session.xenapi.task.set_status(task, 'success')
-    except Exception as e:
-        error = e
-    finally:
-        if task:
-            session.xenapi.task.destroy(task)
-        if error:
-            raise error
-        return json.dumps(res)
-
+    return install_helper(session, args, 'update')
 
 def check_upgrade(session, args):
     # TODO:
@@ -239,6 +258,7 @@ def set_proxies(session, args):
 _LOGGER = configure_logging('updater')
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
+        'install': install,
         'check_update': check_update,
         'update': update,
         'get_proxies': get_proxies,
