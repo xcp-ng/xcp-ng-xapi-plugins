@@ -106,11 +106,11 @@ def display_package(p):
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
-def build_repo_list(additional_repos):
+def build_repo_list(enabled_repos, additional_repos):
     repos = list(DEFAULT_REPOS)
     if additional_repos:
         repos += [x.strip() for x in additional_repos.split(',')]
-    return repos
+    return [x.id for x in enabled_repos if x.id in repos]
 
 def install_helper(session, args, action):
     assert action in ('install', 'update')
@@ -119,7 +119,11 @@ def install_helper(session, args, action):
     if action == 'install' and not packages:
         raise Exception('Missing or empty argument `packages`')
 
-    repos = build_repo_list(args.get('repos'))
+    yum_instance = yum.YumBase()
+    yum_instance.preconf.debuglevel = 0
+    yum_instance.preconf.plugins = False
+    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
+
     task = None
     res = None
     error = None
@@ -157,10 +161,10 @@ def install(session, args):
 @error_wrapped
 @operationlock()
 def check_update(session, args):
-    repos = build_repo_list(args.get('repos'))
     yum_instance = yum.YumBase()
     yum_instance.preconf.debuglevel = 0
     yum_instance.preconf.plugins = True
+    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
     yum_instance.repos.disableRepo('*')
     yum_instance.repos.enableRepo(','.join(repos))
     packages = yum_instance.doPackageLists(pkgnarrow='updates')
