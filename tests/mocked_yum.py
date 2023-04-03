@@ -9,7 +9,7 @@ class Repos:
         return 0
 
     def listEnabled(self):
-        repos = ['xcp-ng-base', 'xcp-ng-updates', 'totoro', 'lalala', 'riri', 'fifi', 'loulou']
+        repos = ['xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor', 'totoro', 'lalala', 'riri', 'fifi', 'loulou']
 
         class RepoObject:
             def __init__(self, repo):
