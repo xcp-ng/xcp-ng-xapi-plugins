@@ -14,7 +14,7 @@ from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 
 
-DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates')
+DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor')
 
 
 class OperationException(Exception):
