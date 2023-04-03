@@ -88,6 +88,16 @@ class TestUpdate:
             ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
         )
 
+    def test_update_with_disabled_repo(self, run_command, fs):
+        run_command.return_value = {}
+
+        repos = list(DEFAULT_REPOS)
+        repos.append('ignored_repo')
+        update(mock.MagicMock(), {'repos': 'ignored_repo'})
+        run_command.assert_called_once_with(
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+        )
+
     def test_update_with_additional_repos_and_packages(self, run_command, fs):
         run_command.return_value = {}
 

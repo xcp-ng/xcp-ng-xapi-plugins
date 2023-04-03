@@ -8,6 +8,14 @@ class Repos:
     def disableRepo(self, repos):
         return 0
 
+    def listEnabled(self):
+        repos = ['xcp-ng-base', 'xcp-ng-updates', 'totoro', 'lalala', 'riri', 'fifi', 'loulou']
+
+        class RepoObject:
+            def __init__(self, repo):
+                self.id = repo
+        return [RepoObject(repo) for repo in repos]
+
 class Ts:
     def __init__(self):
         return
