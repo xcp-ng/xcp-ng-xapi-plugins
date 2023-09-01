@@ -1,0 +1,69 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
+
+import errno
+import sys
+import json
+
+import XenAPI
+import XenAPIPlugin
+
+sys.path.append('.')
+from xcpngutils import configure_logging, run_command, error_wrapped
+
+# ------------------------------------------------------------------------------
+
+def export_vdi_from_path(vdi_path):
+    return ''
+
+# ------------------------------------------------------------------------------
+
+def export_file_vdi(sr_uuid, vdi_uuid):
+    return export_vdi_from_path('/run/sr-mount/{}/{}.vhd'.format(sr_uuid, vdi_uuid))
+
+def export_linstor_vdi(sr_uuid, vdi_uuid):
+    pass
+
+# ------------------------------------------------------------------------------
+
+SR_TYPE_TO_EXPORT_HANDLER = {
+    'ext': export_file_vdi,
+    'file': export_file_vdi,
+    'linstor': export_linstor_vdi,
+    # I don't have a nice idea to implement this export without risk for the moment:
+    # - We must sometimes activate the volume.
+    # - A local python dict is used in the smapi to activate or not the volume.
+    # - What's the result if we always enable a volume using this plugin?
+    #   Because we can't update properly the local dict in the LVM driver.
+    # - Can we always activate without impact in the smapi?
+    # 'lvm': unsupported,
+    'nfs': export_file_vdi
+}
+
+# ------------------------------------------------------------------------------
+
+@error_wrapped
+def export_vdi(session, args):
+    vdi_uuid = args['uuid']
+
+    session = XenAPI.xapi_local()
+    session.xenapi.login_with_password('vdi-tools', '', '', 'export_vdi')
+
+    vdi_ref = session.xenapi.VDI.get_by_uuid(vdi_uuid)
+    vdi_rec = session.xenapi.VDI.get_record(vdi_ref)
+
+    sr_rec = session.xenapi.SR.get_record(vdi_rec['SR'])
+    sr_type = sr_rec['type']
+
+    handler = SR_TYPE_TO_EXPORT_HANDLER.get(sr_type)
+    if not handler:
+        raise Exception('No handler to export VDI data of `{}`.'.format(sr_type))
+
+    sr_uuid = sr_rec['uuid']
+    return handler(sr_uuid, vdi_uuid)
+
+_LOGGER = configure_logging('vdi-tools')
+if __name__ == "__main__":
+    XenAPIPlugin.dispatch({
+        'export_vdi': export_vdi
+    })
