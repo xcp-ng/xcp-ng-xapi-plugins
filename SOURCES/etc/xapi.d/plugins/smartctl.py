@@ -39,7 +39,26 @@ def check_smartctl(a,b):
                 results[disk] = "Error: " + str(e)
         return json.dumps(results)
 
+def check_health(a,b):
+    with OperationLocker():
+        results = {}
+        disks = list_disks()
+        for disk in disks:
+            cmd = ["smartctl", "-j", "-H", disk]
+            try:
+                output = subprocess.check_output(cmd)
+                json_output = json.loads(output)
+                if json_output['smart_status']['passed']:
+                    results[disk] = "PASSED"
+                else:
+                    results[disk] = "FAILED"
+            except subprocess.CalledProcessError as e:
+                results[disk] = "Error: " + str(e)
+        return json.dumps(results)
+
+
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
-        'check_smartctl': check_smartctl
+        'check_smartctl': check_smartctl,
+        'check_health': check_health
     })
