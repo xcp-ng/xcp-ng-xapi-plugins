@@ -15,13 +15,12 @@ _LOGGER = configure_logging('smartctl')
 def list_disks():
     disks = []
     try:
-        output = subprocess.check_output(['sudo', 'smartctl', '--scan'], universal_newlines=True)
-        lines = output.split('\n')
-        for line in lines:
+        output = subprocess.check_output(['smartctl', '--scan'])
+        for line in output.splitlines():
             if line.startswith('/dev/') and not line.startswith('/dev/bus/'):
                 disks.append(line.split()[0])
-    except subprocess.CalledProcessError:
-        print('Error: smartctl command failed.')
+    except subprocess.CalledProcessError as e:
+        results[disks] = "Error: " + str(e)
     return disks
 
 @error_wrapped
@@ -39,6 +38,7 @@ def check_smartctl(a,b):
                 results[disk] = "Error: " + str(e)
         return json.dumps(results)
 
+@error_wrapped
 def check_health(a,b):
     with OperationLocker():
         results = {}
@@ -59,6 +59,6 @@ def check_health(a,b):
 
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
-        'check_smartctl': check_smartctl,
-        'check_health': check_health
+        'information': check_smartctl,
+        'health': check_health
     })
