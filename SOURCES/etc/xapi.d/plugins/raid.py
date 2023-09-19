@@ -8,7 +8,7 @@ import sys
 import XenAPIPlugin
 
 sys.path.append('.')
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, run_command, error_wrapped, ProcessException
 from xcpngutils.operationlocker import OperationLocker
 
 _LOGGER = configure_logging('raid')
@@ -21,7 +21,7 @@ def check_raid_pool(session, args):
     with OperationLocker():
         try:
             result = run_command(['mdadm', '--detail', device])
-        except subprocess.CalledProcessError:
+        except ProcessException:
             # No RAID
             return json.dumps({})
 

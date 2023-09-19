@@ -63,12 +63,22 @@ def configure_logging(name):
     return logger
 
 
+class ProcessException(Exception):
+    def __init__(self, code, command, stderr, stdout):
+        self.returncode = code
+        self.command = command
+        self.stderr = stderr
+        self.stdout = stdout
+
+    def __str__(self):
+        return f"Command '{self.command}' failed with code: {self.returncode}"
+
 def run_command(command, check=True):
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     code = process.returncode
     if check and code != 0:
-        raise subprocess.CalledProcessError(code, command, None)
+        raise ProcessException(code, command, stderr, stdout)
     result = {'stdout': stdout, 'stderr': stderr, 'command': command, 'returncode': code}
     return result
 
@@ -123,6 +133,11 @@ def error_wrapped(func):
         except EnvironmentError as e:
             message = e.strerror if e.strerror is not None else str(e.args)
             raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()])
+        except ProcessException as e:
+            raise_plugin_error(
+                e.returncode, str(e),
+                detail=f"stdout: '{e.stdout}', stderr: '{e.stderr}'", backtrace=traceback.format_exc()
+            )
         except Exception as e:
             raise_plugin_error('-1', str(e), backtrace=traceback.format_exc())
 
