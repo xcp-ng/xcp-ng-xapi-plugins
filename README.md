@@ -89,7 +89,6 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=raid.py fn=check_raid_pool
 {"raid": {"Working Devices": "2", "Raid Devices": "2", "Raid Level": "raid1", "Creation Time": "Wed Jul 17 13:29:42 2019", "Used Dev Size": "52428672 (50.00 GiB 53.69 GB)", "UUID": "1766eb6e:85762159:4c98b42e:2da92c97", "Array Size": "52428672 (50.00 GiB 53.69 GB)", "Failed Devices": "0", "State": "clean", "Version": "1.0", "Events": "44", "Persistence": "Superblock is persistent", "Spare Devices": "0", "Name": "localhost:127", "Active Devices": "2", "Total Devices": "2", "Update Time": "Tue Jul 30 01:58:48 2019"}, "volumes": [["0", "8", "0", "0", "active sync", "/dev/sda"], ["1", "8", "16", "1", "active sync", "/dev/sdb"]]}
 ```
 
-
 ## XCP-ng updater
 
 A xapi plugin to invoke yum commands on the host.
@@ -143,6 +142,21 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=lsblk.py fn=list_block_devices
 ```
 - `blockdevices` is a json representation of the blockdevices.
 - `stdout` is the raw output.
+
+## Smartctl parser
+
+A xapi plugin to get information and health of physical disks on the host
+### `information`:
+```
+xe host-call-plugin host-uuid=<uuid> plugin=smartctl.py fn=information
+{"/dev/sdf": {"power_on_time": {"hours": 9336}, "ata_version": {"minor_value": 94, "string": "ACS-4 T13/BSR INCITS 529 revision 5", "major_value": 2556}, "form_factor": {"ata_value": 3, "name": "2.5 inches"}, "firmware_version": "SVQ02B6Q", "wwn": {"oui": 9528, "naa": 5, "id": 65536604056}, "smart_status": {"passed": true}, "smartctl": {"build_info": "(local build)", "exit_status": 0, "argv": ["smartctl", "-j", "-a", "/dev/sdf"], "version": [7, 0], "svn_revision": "4883", "platform_info": "x86_64-linux-4.19.0+1"}, "temperature": {"current": 35}, "rotation_rate": 0, "interface_speed": {"current": {"sata_value": 3, "units_per_second": 60, "string": "6.0 Gb/s", "bits_per_unit": 100000000}, [...] }
+```
+
+### `health`:
+```
+xe host-call-plugin host-uuid=<uuid>  plugin=smartctl.py fn=health
+{"/dev/sdf": "PASSED", "/dev/sdg": "PASSED", "/dev/sdd": "PASSED", "/dev/sde": "PASSED", "/dev/sdb": "PASSED", "/dev/sdc": "PASSED", "/dev/sda": "PASSED"}
+```
 
 ## Netdata
 
