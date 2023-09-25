@@ -81,14 +81,14 @@ SMARTCTL_INFO_EXPECTED = """{
 @mock.patch("smartctl.run_command", autospec=True)
 @mock.patch("smartctl._list_disks", autospec=True)
 class TestSmartctl:
-     def test_smartctl_error(self, _list_disks, run_command, fs):
+    def test_smartctl_error(self, _list_disks, run_command, fs):
         _list_disks.side_effect = Exception("Error!")
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             get_health(None, None)
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
-        
+
     def test_smartctl_information(self, _list_disks, run_command, fs):
         _list_disks.return_value = ["/dev/sda"]
         run_command.return_value = {"stdout": SMARTCTL_INFO}
