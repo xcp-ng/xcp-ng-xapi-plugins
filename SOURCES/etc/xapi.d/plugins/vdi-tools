@@ -188,20 +188,15 @@ class Vhd:
             offset = struct.unpack_from('>I', batBuffer, blockIndex * 4)[0]
             self.batArray.append(offset)
 
-
-        #result = subprocess.Popen(['vhd-tool', 'get', path,'parent-unicode-name'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        #stdout, stderr = result.communicate()
-        #parentUnicodeName = stdout.strip()
-        parentUnicodeName = self.headerParsed[10].decode("utf-16-be").rstrip('\x00').encode('utf-8')
-        print('parentUnicodeName',parentUnicodeName)
-        if parentUnicodeName:
+        parentUnicodeName = run_command(['vhd-util', 'query', '-p', '-n', self.path]).stdout.strip()
+        if parentUnicodeName.endswith('has no parent'):
+            self.parent = None
+        else:
             parentPath = os.path.join(os.path.dirname(path), parentUnicodeName)
             print('got parent', parentUnicodeName, parentPath)
             print(parentUnicodeName)
             self.parent = Vhd(parentPath)
-        else:
             print('found root')
-            self.parent = None
 
     def containsBlocks(self, index):
         return self.batArray[index] != 0xffffffff or ( self.parent and self.parent.containsBlocks(index) )
@@ -424,9 +419,14 @@ SR_TYPE_TO_EXPORT_HANDLER = {
 
 @error_wrapped
 def export_vdi(session, args):
+    # VDI to export.
     vdi_uuid = args['uuid']
-    hostname = args["hostname"]
-    port = args["port"]
+
+    # Destination hostname where to export.
+    hostname = args['hostname']
+
+    # Destination port.
+    port = args['port']
 
     session = XenAPI.xapi_local()
     session.xenapi.login_with_password('vdi-tools', '', '', 'export_vdi')
@@ -442,7 +442,8 @@ def export_vdi(session, args):
         raise Exception('No handler to export VDI data of `{}`.'.format(sr_type))
 
     sr_uuid = sr_rec['uuid']
-    return handler(sr_uuid, vdi_uuid, hostname, port)
+    handler(sr_uuid, vdi_uuid, hostname, port)
+    return '{}'
 
 _LOGGER = configure_logging('vdi-tools')
 if __name__ == "__main__":
