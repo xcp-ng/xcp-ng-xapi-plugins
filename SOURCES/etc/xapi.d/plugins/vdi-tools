@@ -188,15 +188,12 @@ class Vhd:
             offset = struct.unpack_from('>I', batBuffer, blockIndex * 4)[0]
             self.batArray.append(offset)
 
-        parentUnicodeName = run_command(['vhd-util', 'query', '-p', '-n', self.path]).stdout.strip()
-        if parentUnicodeName.endswith('has no parent'):
+        parent = run_command(['vhd-util', 'query', '-p', '-n', self.path, '-u']).stdout.strip()
+        if parent.endswith('has no parent'):
             self.parent = None
         else:
-            parentPath = os.path.join(os.path.dirname(path), parentUnicodeName)
-            print('got parent', parentUnicodeName, parentPath)
-            print(parentUnicodeName)
+            parentPath = os.path.join(os.path.dirname(path), parent)
             self.parent = Vhd(parentPath)
-            print('found root')
 
     def containsBlocks(self, index):
         return self.batArray[index] != 0xffffffff or ( self.parent and self.parent.containsBlocks(index) )
@@ -238,7 +235,7 @@ class Vhd:
         socket.send(footerBuffer)
         sent += len(footerBuffer)
 
-        # write child header but with root parentTimestamp,parentUnicodeName,parentUuid, parentLocators
+        # write child header but with root parentTimestamp,parent,parentUuid, parentLocators
         footerHeader = footerHeader[0:40] +  root.headerBuffer[40:]
         # clear the current checksum value, and then update it with a new computed one
         struct.pack_into(">I", footerHeader, 36, 0 )
@@ -271,8 +268,10 @@ class Vhd:
 
         # write blocks
         for blockIndex in range(0, len(self.batArray), 1):
+            print('TRY TO GET BLOCK DATA {}'.format(blockIndex))
             data = self.getBlockData(blockIndex)
             if data:
+                print('TRY TO SEND BLOCK DATA {}'.format(blockIndex))
                 socket.send(data)
                 sent += len(data)
 
@@ -297,30 +296,15 @@ def send(host, port, key, path):
     client_socket.close()
     print("File sent.")
 
-
-def execute_command(file_path):
-    result = subprocess.Popen(['vhd-tool', 'get', file_path, 'parent-unicode-name'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = result.communicate()
-    if result.returncode == 0:
-        output = stdout.strip()
-        if output:
-            print(output)
-            return execute_command(os.path.join(os.path.dirname(file_path), output))
-        else:
-            print("Command produced an empty result.")
-            print(file_path)
-            return file_path
-    else:
-        print("Command failed with exit code {}.".format(result.returncode))
-
-
 # ------------------------------------------------------------------------------
 
 def export_vdi_from_path(vdi_path, hostname, port):
     vhd = Vhd(vdi_path)
 
+    print('TRY TO JOIN {}'.format(hostname))
     client_socket = socket.socket()
-    client_socket.connect(hostname, int(port))
+    client_socket.connect((hostname, int(port)))
+    print('CONNECTED')
     vhd.writeTo(client_socket)
 
     return 0
@@ -361,41 +345,133 @@ def _makedev_from_file(path):
 
     return os.makedev(dev_major, dev_minor)
 
-def _drbd_device_to_mapper(stats):
-    if not _is_drbd_device(stats):
-        return ''
+# def _drbd_device_to_mapper(stats):
+#     if not _is_drbd_device(stats):
+#         return ''
 
-    major = os.major(stats.st_rdev)
-    minor = os.minor(stats.st_rdev)
+#     major = os.major(stats.st_rdev)
+#     minor = os.minor(stats.st_rdev)
 
-    slaves_dir = ''.format(major, minor)
-    entries = os.scandir(slaves_dir)
-    for ent in entries:
-        try:
-            slave_stats = os.stat(ent.path)
-        except Exception:
-            continue
+#     slaves_dir = ''.format(major, minor)
+#     entries = os.scandir(slaves_dir)
+#     for ent in entries:
+#         try:
+#             slave_stats = os.stat(ent.path)
+#         except Exception:
+#             continue
 
-        if not S_ISLNK(slave_stats):
-            continue
+#         if not S_ISLNK(slave_stats):
+#             continue
 
-        if not ent.name.startswith("dm-"):
-            continue
+#         if not ent.name.startswith("dm-"):
+#             continue
 
-        try:
-            int(ent.name[3:])
-        except ValueError:
-            continue
+#         try:
+#             int(ent.name[3:])
+#         except ValueError:
+#             continue
 
-        dev_path = "/sys/block/{}/dev".format(ent.name)
-        return _makedev_from_file(dev_path)
+#         dev_path = "/sys/block/{}/dev".format(ent.name)
+#         return _makedev_from_file(dev_path)
+
+
+
+# def _get_controller_uri():
+#     PLUGIN_CMD = 'hasControllerRunning'
+
+#     # Try to find controller using drbdadm.
+#     (ret, stdout, stderr) = util.doexec([
+#         'drbdadm', 'status', DATABASE_VOLUME_NAME
+#     ])
+#     if ret == 0:
+#         # If we are here, the database device exists locally.
+
+#         if stdout.startswith('{} role:Primary'.format(DATABASE_VOLUME_NAME)):
+#             # Nice case, we have the controller running on this local host.
+#             return 'linstor://localhost'
+
+#         # Try to find the host using DRBD connections.
+#         res = REG_DRBDADM_PRIMARY.search(stdout)
+#         if res:
+#             node_name = res.groups()[0]
+#             ip = get_remote_host_ip(node_name)
+#             if ip:
+#                 return 'linstor://' + ip
+
+#     # Worst case: we use many hosts in the pool (>= 4), so we can't find the
+#     # primary using drbdadm because we don't have all connections to the
+#     # replicated volume. `drbdadm status xcp-persistent-database` returns
+#     # 3 connections by default.
+#     try:
+#         session = util.timeout_call(10, util.get_localAPI_session)
+
+#         for host_ref, host_record in session.xenapi.host.get_all_records().items():
+#             node_name = host_record['hostname']
+#             try:
+#                 if distutils.util.strtobool(
+#                     session.xenapi.host.call_plugin(host_ref, PLUGIN, PLUGIN_CMD, {})
+#                 ):
+#                     return 'linstor://' + host_record['address']
+#             except Exception as e:
+#                 # Can throw and exception if a host is offline. So catch it.
+#                 util.SMlog('Unable to search controller on `{}`: {}'.format(
+#                     node_name, e
+#                 ))
+#     except:
+#         # Not found, maybe we are trying to create the SR...
+#         pass
+
+# def get_controller_uri():
+#     retries = 0
+#     while True:
+#         uri = _get_controller_uri()
+#         if uri:
+#             return uri
+
+#         retries += 1
+#         if retries >= 10:
+#             break
+#         time.sleep(1)
+
+
+
+
+
+
+# def _reconnect(self):
+#     controller_uri = get_controller_uri()
+
+#     self._journaler = LinstorJournaler(
+#         controller_uri, self._group_name, logger=util.SMlog
+#     )
+
+#     # Try to open SR if exists.
+#     # We can repair only if we are on the master AND if
+#     # we are trying to execute an exclusive operation.
+#     # Otherwise we could try to delete a VDI being created or
+#     # during a snapshot. An exclusive op is the guarantee that
+#     # the SR is locked.
+#     self._linstor = LinstorVolumeManager(
+#         controller_uri,
+#         self._group_name,
+#         repair=(
+#             self._is_master and
+#             self.srcmd.cmd in self.ops_exclusive
+#         ),
+#         logger=util.SMlog
+#     )
+
+
+
 
 def export_linstor_vdi(sr_uuid, vdi_uuid, hostname, port):
+    return export_vdi_from_path('/dev/drbd/by-res/xcp-volume-0c081f63-6029-4710-a309-be47d9beae44/0', hostname, port)
+
     vhd_file = '/run/sr-mount/{}/{}.vhd'.format(sr_uuid, vdi_uuid)
     stats = os.stat(vhd_file)
 
-    if _drbd_is_up_to_date(stats):
-        return export_vdi_from_path(_drbd_device_to_mapper(stats), hostname, port)
+    # if _drbd_is_up_to_date(stats):
+    #     return export_vdi_from_path(_drbd_device_to_mapper(stats), hostname, port)
 
     return ''
 
