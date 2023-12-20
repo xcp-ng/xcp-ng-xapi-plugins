@@ -24,7 +24,7 @@ def get_information(session, args):
     with OperationLocker():
         disks = _list_disks()
         for disk in disks:
-            cmd = run_command(["smartctl", "-j", "-a", disk])
+            cmd = run_command(["smartctl", "-j", "-a", disk], check=False)
             results[disk] = json.loads(cmd['stdout'])
         return json.dumps(results)
 
