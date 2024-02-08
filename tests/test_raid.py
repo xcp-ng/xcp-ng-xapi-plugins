@@ -5,6 +5,7 @@ import subprocess
 import XenAPIPlugin
 
 from raid import check_raid_pool
+from xcpngutils import ProcessException
 
 MDADM_DETAIL_CMD = ['mdadm', '--detail', '/dev/md127']
 
@@ -61,7 +62,7 @@ class TestCheckRaidPool:
         assert e.value.params[1] == 'Error!'
 
     def test_raid_missing(self, run_command, fs):
-        run_command.side_effect = subprocess.CalledProcessError(1, MDADM_DETAIL_CMD, None)
+        run_command.side_effect = ProcessException(1, MDADM_DETAIL_CMD, "stderr", "stdout")
         res = check_raid_pool(None, None)
         assert json.loads(res) == json.loads("{}")
         run_command.assert_called_once_with(MDADM_DETAIL_CMD)
