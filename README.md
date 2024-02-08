@@ -108,6 +108,13 @@ Update the host.
 $ xe host-call-plugin host-uuid=<uuid> plugin=updater.py fn=update
 ```
 
+#### `query_installed`:
+Return a JSON object of the installed packages given in arguments with an empty value string for not installed ones.
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=updater.py fn=query_installed args:packages=sm,sm-rawhba,invalid
+{"sm-rawhba": "sm-rawhba-2.30.8-2.3.0.linstor.1.xcpng8.2.x86_64", "invalid": "", "sm": "sm-2.30.8-10.1.0.linstor.1.xcpng8.2.x86_64"}
+```
+
 ### Proxy configuration
 
 #### `get_proxies()`:
