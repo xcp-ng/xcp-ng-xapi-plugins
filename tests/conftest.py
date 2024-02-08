@@ -5,6 +5,7 @@ import sys
 import mocked_configparser
 import mocked_xen_api_plugin
 import mocked_yum
+import mocked_kalray_rpc
 
 def pytest_configure():
     pytest.plugins_lock_file = '/var/lib/xcp-ng-xapi-plugins/pytest.lock'
@@ -17,6 +18,8 @@ sys.modules['ConfigParser'] = mocked_configparser
 
 # Mock yum globally, module is not necessarily present on the system.
 sys.modules['yum'] = mocked_yum
+
+sys.modules['kalray.acs.spdk.rpc.client'] = mocked_kalray_rpc
 
 sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
 
