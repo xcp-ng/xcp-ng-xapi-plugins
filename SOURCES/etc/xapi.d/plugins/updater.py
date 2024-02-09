@@ -181,6 +181,33 @@ def check_update(session, args):
 def update(session, args):
     return install_helper(session, args, 'update')
 
+@error_wrapped
+def query_installed(session, args):
+    packages = args.get('packages')
+    if not packages:
+        return '{}'
+
+    import re
+    packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
+    packages = filter(lambda package: package, packages)
+    if not packages:
+        return '{}'
+
+    package_map = dict.fromkeys(packages, '')
+    packages = list(package_map)
+
+    command = ['rpm', '-q'] + packages
+    result = run_command(command, check=False)
+    package_info = result['stdout'].rstrip().split('\n')
+    assert len(packages) == len(package_info), 'ill-formed result'
+
+    for i, package in enumerate(packages):
+        info = package_info[i]
+        if not info.endswith('is not installed'):
+            package_map[package] = info
+
+    return json.dumps(package_map)
+
 def check_upgrade(session, args):
     # TODO:
     # check new version exists
@@ -265,6 +292,7 @@ if __name__ == "__main__":
         'install': install,
         'check_update': check_update,
         'update': update,
+        'query_installed': query_installed,
         'get_proxies': get_proxies,
         'set_proxies': set_proxies
     })

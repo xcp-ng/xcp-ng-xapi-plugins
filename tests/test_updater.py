@@ -7,7 +7,14 @@ import pytest
 import time
 import XenAPIPlugin
 
-from updater import install, check_update, get_proxies, set_proxies, update, DEFAULT_REPOS
+from updater import \
+    install, \
+    check_update, \
+    get_proxies, \
+    set_proxies, \
+    update, \
+    query_installed, \
+    DEFAULT_REPOS
 
 # ==============================================================================
 # Install/Update.
@@ -107,6 +114,60 @@ class TestUpdate:
         run_command.assert_called_once_with(
             ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y', packages]
         )
+
+@mock.patch('updater.run_command', autospec=True)
+class TestIsInstalled:
+    def test_without_package(self, run_command):
+        result = query_installed(mock.MagicMock(), {})
+        assert result == '{}'
+
+    def test_one_package_installed(self, run_command):
+        run_command.return_value = {
+            'stdout': 'test.rpm',
+            'stderr': '',
+            'returncode': 0
+        }
+
+        package = 'test'
+        result = query_installed(mock.MagicMock(), {'packages': package})
+        run_command.assert_called_once_with(
+            ['rpm', '-q', package], False
+        )
+
+        assert json.loads(result) == {'test': 'test.rpm'}
+
+    def test_no_package_installed(self, run_command):
+        run_command.return_value = {
+            'stdout': 'test is not installed',
+            'stderr': '',
+            'returncode': 1
+        }
+
+        package = 'test'
+        result = query_installed(mock.MagicMock(), {'packages': package})
+        run_command.assert_called_once_with(
+            ['rpm', '-q', package], False
+        )
+
+        assert json.loads(result) == {'test': ''}
+
+    def test_with_many_packages(self, run_command, fs):
+        run_command.return_value = {
+            'stdout':
+            'toto.rpm\n'
+            'package tata is not installed\n'
+            'titi.rpm\n',
+            'stderr': '',
+            'returncode': 0
+        }
+
+        packages = 'toto,tata,titi'
+        result = query_installed(mock.MagicMock(), {'packages': packages})
+        run_command.assert_called_once_with(
+            ['rpm', '-q'] + packages.split(','), False
+        )
+
+        assert json.loads(result) == {'toto': 'toto.rpm', 'tata': '', 'titi': 'titi.rpm'}
 
 # ==============================================================================
 # Lock: Try to execute a command with a lock already locked.
