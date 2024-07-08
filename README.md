@@ -165,6 +165,13 @@ xe host-call-plugin host-uuid=<uuid>  plugin=smartctl.py fn=health
 {"/dev/sdf": "PASSED", "/dev/sdg": "PASSED", "/dev/sdd": "PASSED", "/dev/sde": "PASSED", "/dev/sdb": "PASSED", "/dev/sdc": "PASSED", "/dev/sda": "PASSED"}
 ```
 
+## IPMI-sensors parser
+A xapi plugin to get information about the host via the BMC
+```
+xe host-call-plugin host-uuid=<uuid>  plugin=2crsi-sensors.py fn="get_info"
+[{"Name": "Outlet_Temp", "Event": "'OK'", "Units": "C", "Reading": "32.00", "Type": "Temperature"}, {"Name": "CPU0_Temp", "Event": "'OK'", "Units": "C", "Reading": "63.00", "Type": "Temperature"}, {"Name": "CPU1_Temp", "Event": "'OK'", "Units": "C", "Reading": "59.00", "Type": "Temperature"}, {"Name": "CPU0_DIMM_T", "Event": "'OK'", "Units": "C", "Reading": "38.00", "Type": "Temperature"}, {"Name": "CPU1_DIMM_T", "Event": "'OK'", "Units": "C", "Reading": "37.00", "Type": "Temperature"}, {"Name": "PSU_Inlet_Temp", "Event": "'OK'", "Units": "C", "Reading": "36.00", "Type": "Temperature"}, {"Name": "CPU0_VR_Temp", "Event": "'OK'", "Units": "C", "Reading": "43.00", "Type": "Temperature"}, {"Name": "CPU1_VR_Temp", "Event": "'OK'", "Units": "C", "Reading": "43.00", "Type": "Temperature"}, {"Name": "OCP_NIC_Temp", "Event": "'OK'", "Units": "C", "Reading": "60.00", "Type": "Temperature"} [...] }
+```
+
 ## Netdata
 
 A xapi plugin to install and get api keys of netdata on the host.
