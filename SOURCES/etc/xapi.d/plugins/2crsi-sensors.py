@@ -39,8 +39,17 @@ def get_data(session, args):
 
     return json.dumps(result)
 
+def get_ip(session,args):
+    IP = subprocess.check_output(["ipmitool lan print | grep 'IP Address  '"], shell=True)
+    IP = str(IP)
+    IP = IP.replace(" ", "")
+    result =  re.findall(r"\b\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}\b", IP)
+    return result[0]
+
+
 _LOGGER = configure_logging('2crsi-sensors')
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
-        'get_info': get_data
+        'get_info': get_data,
+        'get_ip': get_ip
     })
