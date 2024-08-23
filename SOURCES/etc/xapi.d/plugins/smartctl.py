@@ -14,47 +14,36 @@ def _list_disks():
     disks = []
     result = run_command(['smartctl', '--scan'])
     for line in result['stdout'].splitlines():
+        disks.append(line.split()[2])
         disks.append(line.split()[0])
     return disks
 
 @error_wrapped
-def _list_raids():
-    raids = []
-    result = run_command(['smartctl', '--scan'])
-    for line in result['stdout'].splitlines():
-        raids.append(line.split()[2])
-    return raids
-
-@error_wrapped
 def get_information(session, args):
     results = {}
-    raids = {}
     i = 0
     with OperationLocker():
         disks = _list_disks()
-        raids = _list_raids()
         for disk in disks:
-            cmd = run_command(["smartctl", "-j", "-a", "-d", raids[i], disk], check=False)
+            cmd = run_command(["smartctl", "-j", "-a", "-d", disks[i], disks[i+1]], check=False)
             results[disk] = json.loads(cmd['stdout'])
-            i = i + 1
+            i = i + 2
         return json.dumps(results)
 
 @error_wrapped
 def get_health(session, args):
     results = {}
-    raids = {}
     i = 0
     with OperationLocker():
         disks = _list_disks()
-        raids = _list_raids()
         for disk in disks:
-            cmd = run_command(["smartctl", "-j", "-H", "-d", raids[i], disk])
+            cmd = run_command(["smartctl", "-j", "-H", "-d", disks[i], disks[i+1]])
             json_output = json.loads(cmd['stdout'])
             if json_output['smart_status']['passed']:
                 results[disk] = "PASSED"
             else:
                 results[disk] = "FAILED"
-            i = i + 1
+            i = i + 2
         return json.dumps(results)
 
 
