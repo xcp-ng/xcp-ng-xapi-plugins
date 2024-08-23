@@ -22,7 +22,7 @@ def _list_raids():
     raids = []
     result = run_command(['smartctl', '--scan'])
     for line in result['stdout'].splitlines():
-        disks.append(line.split()[2])
+        raids.append(line.split()[2])
     return raids
 
 @error_wrapped
