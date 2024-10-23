@@ -5,10 +5,12 @@ import XenAPIPlugin
 
 from zfs import list_zfs_pools
 
-@mock.patch('zfs.run_command', autospec=True)
+
+@mock.patch("zfs.run_command", autospec=True)
 class TestListZfsPools:
     def test_zfs(self, run_command):
-        run_command.side_effect = [{"stdout": """vol0	type	filesystem	-
+        run_command.side_effect = [
+            {"stdout": """vol0	type	filesystem	-
 vol0	creation	Wed Jul 21 15:59 2021	-
 vol0	used	161M	-
 vol0	available	57.5G	-
@@ -78,44 +80,58 @@ vol0	encryption	off	default
 vol0	keylocation	none	default
 vol0	keyformat	none	default
 vol0	pbkdf2iters	0	default
-vol0	special_small_blocks	0	default"""}, OSError(2, 'Error!', 'Error!'), OSError(3, 'Error!', 'Error!')]
+vol0	special_small_blocks	0	default"""},
+            OSError(2, "Error!", "Error!"),
+            OSError(3, "Error!", "Error!"),
+        ]
 
-        expected = ' \
-{"vol0": {"setuid": "on", "relatime": "off", "referenced": "160M", "written": "160M", "zoned": "off", \
-"primarycache": "all", "logbias": "latency", "creation": "Wed Jul 21 15:59 2021", "sync": "standard", "snapdev": \
-"hidden", "dedup": "off", "sharenfs": "off", "usedbyrefreservation": "0B", "sharesmb": "off", "createtxg": "1", \
-"canmount": "on", "mountpoint": "/vol0", "casesensitivity": "sensitive", "utf8only": "off", "xattr": "on", \
-"dnodesize": "legacy", "mlslabel": "none", "objsetid": "54", "defcontext": "none", "rootcontext": "none", "mounted": \
-"yes", "compression": "off", "overlay": "off", "logicalused": "160M", "usedbysnapshots": "0B", "filesystem_count": \
-"none", "copies": "1", "snapshot_limit": "none", "aclinherit": "restricted", "compressratio": "1.00x", "readonly": \
-"off", "version": "5", "normalization": "none", "filesystem_limit": "none", "type": "filesystem", "secondarycache": \
-"all", "refreservation": "none", "available": "57.5G", "used": "161M", "exec": "on", "refquota": "none", \
-"refcompressratio": "1.00x", "quota": "none", "keylocation": "none", "snapshot_count": "none", "fscontext": "none", \
-"vscan": "off", "reservation": "none", "atime": "on", "recordsize": "128K", "usedbychildren": "72K", "usedbydataset": \
-"160M", "guid": "9952226885331160097", "pbkdf2iters": "0", "checksum": "on", "special_small_blocks": "0", \
-"redundant_metadata": "all", "volmode": "default", "devices": "on", "keyformat": "none", "logicalreferenced": "160M", \
-"acltype": "off", "nbmand": "off", "context": "none", "encryption": "off", "snapdir": "hidden"}}'
+        expected = (
+            ' {"vol0": {"setuid": "on", "relatime": "off", "referenced": "160M",'
+            ' "written": "160M", "zoned": "off", "primarycache": "all", "logbias":'
+            ' "latency", "creation": "Wed Jul 21 15:59 2021", "sync": "standard",'
+            ' "snapdev": "hidden", "dedup": "off", "sharenfs": "off",'
+            ' "usedbyrefreservation": "0B", "sharesmb": "off", "createtxg": "1",'
+            ' "canmount": "on", "mountpoint": "/vol0", "casesensitivity": "sensitive",'
+            ' "utf8only": "off", "xattr": "on", "dnodesize": "legacy", "mlslabel":'
+            ' "none", "objsetid": "54", "defcontext": "none", "rootcontext": "none",'
+            ' "mounted": "yes", "compression": "off", "overlay": "off", "logicalused":'
+            ' "160M", "usedbysnapshots": "0B", "filesystem_count": "none", "copies":'
+            ' "1", "snapshot_limit": "none", "aclinherit": "restricted",'
+            ' "compressratio": "1.00x", "readonly": "off", "version": "5",'
+            ' "normalization": "none", "filesystem_limit": "none", "type":'
+            ' "filesystem", "secondarycache": "all", "refreservation": "none",'
+            ' "available": "57.5G", "used": "161M", "exec": "on", "refquota": "none",'
+            ' "refcompressratio": "1.00x", "quota": "none", "keylocation": "none",'
+            ' "snapshot_count": "none", "fscontext": "none", "vscan": "off",'
+            ' "reservation": "none", "atime": "on", "recordsize": "128K",'
+            ' "usedbychildren": "72K", "usedbydataset": "160M", "guid":'
+            ' "9952226885331160097", "pbkdf2iters": "0", "checksum": "on",'
+            ' "special_small_blocks": "0", "redundant_metadata": "all", "volmode":'
+            ' "default", "devices": "on", "keyformat": "none", "logicalreferenced":'
+            ' "160M", "acltype": "off", "nbmand": "off", "context": "none",'
+            ' "encryption": "off", "snapdir": "hidden"}}'
+        )
         res = list_zfs_pools(None, None)
         assert json.loads(res) == json.loads(expected)
 
-        expected = '{}'
+        expected = "{}"
         res = list_zfs_pools(None, None)
         assert json.loads(res) == json.loads(expected)
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             list_zfs_pools(None, None)
 
-        assert e.value.params[0] == '3'
-        assert e.value.params[1] == 'Error!'
+        assert e.value.params[0] == "3"
+        assert e.value.params[1] == "Error!"
 
         assert run_command.call_count == 3
-        run_command.assert_called_with(['zfs', 'get', '-H', 'all'])
+        run_command.assert_called_with(["zfs", "get", "-H", "all"])
 
     def test_zfs_error(self, run_command):
-        run_command.side_effect = Exception('Error!')
+        run_command.side_effect = Exception("Error!")
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             list_zfs_pools(None, None)
-        run_command.assert_called_once_with(['zfs', 'get', '-H', 'all'])
-        assert e.value.params[0] == '-1'
-        assert e.value.params[1] == 'Error!'
+        run_command.assert_called_once_with(["zfs", "get", "-H", "all"])
+        assert e.value.params[0] == "-1"
+        assert e.value.params[1] == "Error!"

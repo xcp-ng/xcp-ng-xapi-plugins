@@ -8,6 +8,7 @@ import sys
 
 FILE_LOCKER_DIRECTORY = "/var/run/"
 
+
 def safe_flock(file, flags):
     filename = file.name
 
@@ -29,10 +30,19 @@ def safe_flock(file, flags):
                 raise e
 
             file.close()
-            file = open(filename, 'a+')
+            file = open(filename, "a+")
+
 
 class FileLocker(object):
-    __slots__ = ('pid', 'lockname', 'filename', 'previous_signal', 'file', 'timeout', 'auto_remove')
+    __slots__ = (
+        "pid",
+        "lockname",
+        "filename",
+        "previous_signal",
+        "file",
+        "timeout",
+        "auto_remove",
+    )
 
     def __init__(self, lockname=None, timeout=0, auto_remove=True, dir=None):
         if not dir:
@@ -61,7 +71,7 @@ class FileLocker(object):
     def lock(self, override_timeout=None):
         cur_timeout = override_timeout if override_timeout is not None else self.timeout
         try:
-            self.file = open(self.filename, 'a+')
+            self.file = open(self.filename, "a+")
             if cur_timeout <= 0:
                 safe_flock(self.file, fcntl.LOCK_EX | fcntl.LOCK_NB)
             else:
@@ -70,7 +80,7 @@ class FileLocker(object):
                         safe_flock(self.file, fcntl.LOCK_EX)
                 except TimeoutException:
                     self._timeout_reached()
-                    raise Exception('Timeout reached')
+                    raise Exception("Timeout reached")
         except Exception:
             if self.file:
                 self.file.close()
@@ -112,7 +122,7 @@ class FileLocker(object):
         if self.lockname is not None:
             filename = self.lockname
         else:
-            filename = '{}.lock'.format(os.path.basename(sys.argv[0]))
+            filename = "{}.lock".format(os.path.basename(sys.argv[0]))
         return os.path.abspath(os.path.join(dir, filename))
 
     def _handle_sigterm(self, signum, frame):
@@ -120,7 +130,9 @@ class FileLocker(object):
         raise SystemExit(1)
 
     def _register_signal_handler(self):
-        self.previous_signal = signal.signal(signal.SIGTERM, partial(self._handle_sigterm, self))
+        self.previous_signal = signal.signal(
+            signal.SIGTERM, partial(self._handle_sigterm, self)
+        )
 
     def _unregister_signal_handler(self):
         signal.signal(signal.SIGTERM, self.previous_signal)

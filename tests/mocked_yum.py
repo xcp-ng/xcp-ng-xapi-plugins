@@ -9,12 +9,23 @@ class Repos:
         return 0
 
     def listEnabled(self):
-        repos = ['xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor', 'totoro', 'lalala', 'riri', 'fifi', 'loulou']
+        repos = [
+            "xcp-ng-base",
+            "xcp-ng-updates",
+            "xcp-ng-linstor",
+            "totoro",
+            "lalala",
+            "riri",
+            "fifi",
+            "loulou",
+        ]
 
         class RepoObject:
             def __init__(self, repo):
                 self.id = repo
+
         return [RepoObject(repo) for repo in repos]
+
 
 class Ts:
     def __init__(self):
@@ -25,6 +36,7 @@ class Ts:
 
     def order(self):
         return 0
+
 
 class Package:
     def __init__(self):
@@ -37,9 +49,11 @@ class Package:
         self.size = "0"
         self.license = "GPLv2 and LGPLv2+ and BSD"
 
+
 class Preconf:
     def __init__(self):
         return
+
 
 class YumBase:
     def __init__(self):
