@@ -9,25 +9,24 @@ import yum
 
 import XenAPIPlugin
 
-sys.path.append('.')
+sys.path.append(".")
 from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 
 
-DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor')
+DEFAULT_REPOS = ("xcp-ng-base", "xcp-ng-updates", "xcp-ng-linstor")
 
 
 class OperationException(Exception):
     pass
 
+
 class OperationLocker(FileLocker):
-    __slots__ = ('operation', 'current_operation')
+    __slots__ = ("operation", "current_operation")
 
     def __init__(self, operation, timeout=0):
         super(OperationLocker, self).__init__(
-            timeout=timeout,
-            auto_remove=False,
-            dir='/var/lib/xcp-ng-xapi-plugins/'
+            timeout=timeout, auto_remove=False, dir="/var/lib/xcp-ng-xapi-plugins/"
         )
         self.operation = operation
 
@@ -40,12 +39,12 @@ class OperationLocker(FileLocker):
             # First try without timeout.
             try:
                 super(OperationLocker, self).lock(override_timeout=0)
-                return # Perfect!
+                return  # Perfect!
             except Exception:
                 if self.timeout <= 0:
                     raise
 
-            assert self.timeout > 0 # Ensure we use a timeout. Useless otherwise.
+            assert self.timeout > 0  # Ensure we use a timeout. Useless otherwise.
 
             # Check current operation before retry with timeout.
             self._update_and_check_current_operation()
@@ -57,21 +56,23 @@ class OperationLocker(FileLocker):
     def _update_and_check_current_operation(self):
         try:
             with open(self.filename) as f:
-                self.current_operation = f.readline().rstrip('\n')
+                self.current_operation = f.readline().rstrip("\n")
         except Exception:
             # Couldn't open or read the file, might have been deleted, just raise busy without any explanation.
             self._raise_busy()
 
         # If this is an update, don't wait.
-        self_is_update = self.operation == 'update'
+        self_is_update = self.operation == "update"
         if self_is_update and self.operation == self.current_operation:
-            raise OperationException('Update already in progress')
+            raise OperationException("Update already in progress")
 
     def _raise_busy(self):
         op = self.current_operation
         if not op:
-            op = '<UNKNOWN>'
-        raise OperationException('The updater plugin is busy (current operation: {})'.format(op))
+            op = "<UNKNOWN>"
+        raise OperationException(
+            "The updater plugin is busy (current operation: {})".format(op)
+        )
 
     def _timeout_reached(self):
         self._raise_busy()
@@ -79,7 +80,7 @@ class OperationLocker(FileLocker):
     def _locked(self):
         self.file.seek(0)
         self.file.truncate()
-        self.file.write('{}\n'.format(self.operation))
+        self.file.write("{}\n".format(self.operation))
         self.file.flush()
 
     def _unlocked(self):
@@ -87,42 +88,59 @@ class OperationLocker(FileLocker):
         self.file.truncate()
         self.file.flush()
 
+
 def operationlock(*pid_args, **pid_kwargs):
     def wrapper(func):
         @wraps(func)
         def decorator(*args, **kwargs):
-            pid_kwargs['operation'] = func.__name__
+            pid_kwargs["operation"] = func.__name__
             with OperationLocker(*pid_args, **pid_kwargs):
                 return func(*args, **kwargs)
+
         return decorator
+
     return wrapper
 
 
 def display_package(p):
     if len(p.changelog):
-        changelog = {'date': p.changelog[0][0], 'author': p.changelog[0][1], 'description': p.changelog[0][2]}
+        changelog = {
+            "date": p.changelog[0][0],
+            "author": p.changelog[0][1],
+            "description": p.changelog[0][2],
+        }
     else:
         changelog = None
-    return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
-            'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
+    return {
+        "name": p.name,
+        "version": p.version,
+        "release": p.release,
+        "description": p.summary,
+        "changelog": changelog,
+        "url": p.url,
+        "size": p.size,
+        "license": p.license,
+    }
+
 
 def build_repo_list(enabled_repos, additional_repos):
     repos = list(DEFAULT_REPOS)
     if additional_repos:
-        repos += [x.strip() for x in additional_repos.split(',')]
+        repos += [x.strip() for x in additional_repos.split(",")]
     return [x.id for x in enabled_repos if x.id in repos]
 
-def install_helper(session, args, action):
-    assert action in ('install', 'update')
 
-    packages = args.get('packages')
-    if action == 'install' and not packages:
-        raise Exception('Missing or empty argument `packages`')
+def install_helper(session, args, action):
+    assert action in ("install", "update")
+
+    packages = args.get("packages")
+    if action == "install" and not packages:
+        raise Exception("Missing or empty argument `packages`")
 
     yum_instance = yum.YumBase()
     yum_instance.preconf.debuglevel = 0
     yum_instance.preconf.plugins = False
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
+    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get("repos"))
 
     task = None
     res = None
@@ -133,17 +151,27 @@ def install_helper(session, args, action):
         host_uuid = session.xenapi.host.get_uuid(host)
 
         if not packages:
-            task = session.xenapi.task.create('Update host %s (%s)' % (host_name, host_uuid), '')
+            task = session.xenapi.task.create(
+                "Update host %s (%s)" % (host_name, host_uuid), ""
+            )
         else:
-            task = session.xenapi.task.create('%s %s on host %s (%s)' % (
-                action.capitalize(), packages, host_name, host_uuid
-            ), '')
+            task = session.xenapi.task.create(
+                "%s %s on host %s (%s)"
+                % (action.capitalize(), packages, host_name, host_uuid),
+                "",
+            )
 
-        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+        command = [
+            "yum",
+            action,
+            "--disablerepo=*",
+            "--enablerepo=" + ",".join(repos),
+            "-y",
+        ]
         if packages:
             command.append(packages)
         res = run_command(command)
-        session.xenapi.task.set_status(task, 'success')
+        session.xenapi.task.set_status(task, "success")
     except Exception as e:
         error = e
     finally:
@@ -153,10 +181,12 @@ def install_helper(session, args, action):
             raise error
         return json.dumps(res)
 
+
 @error_wrapped
 @operationlock(timeout=10)
 def install(session, args):
-    return install_helper(session, args, 'install')
+    return install_helper(session, args, "install")
+
 
 @error_wrapped
 @operationlock()
@@ -164,10 +194,10 @@ def check_update(session, args):
     yum_instance = yum.YumBase()
     yum_instance.preconf.debuglevel = 0
     yum_instance.preconf.plugins = True
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
-    yum_instance.repos.disableRepo('*')
-    yum_instance.repos.enableRepo(','.join(repos))
-    packages = yum_instance.doPackageLists(pkgnarrow='updates')
+    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get("repos"))
+    yum_instance.repos.disableRepo("*")
+    yum_instance.repos.enableRepo(",".join(repos))
+    packages = yum_instance.doPackageLists(pkgnarrow="updates")
     del yum_instance.ts
     yum_instance.initActionTs()  # make a new, blank ts to populate
     yum_instance.populateTs(keepold=0)
@@ -176,37 +206,41 @@ def check_update(session, args):
     # Python 2&3 compatible code
     return json.dumps(list(map(display_package, packages)))
 
+
 @error_wrapped
 @operationlock(timeout=10)
 def update(session, args):
-    return install_helper(session, args, 'update')
+    return install_helper(session, args, "update")
+
 
 @error_wrapped
 def query_installed(session, args):
-    packages = args.get('packages')
+    packages = args.get("packages")
     if not packages:
-        return '{}'
+        return "{}"
 
     import re
-    packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
+
+    packages = re.sub(r"\s+", " ", packages).replace(",", " ").split(" ")
     packages = filter(lambda package: package, packages)
     if not packages:
-        return '{}'
+        return "{}"
 
-    package_map = dict.fromkeys(packages, '')
+    package_map = dict.fromkeys(packages, "")
     packages = list(package_map)
 
-    command = ['rpm', '-q'] + packages
+    command = ["rpm", "-q"] + packages
     result = run_command(command, check=False)
-    package_info = result['stdout'].rstrip().split('\n')
-    assert len(packages) == len(package_info), 'ill-formed result'
+    package_info = result["stdout"].rstrip().split("\n")
+    assert len(packages) == len(package_info), "ill-formed result"
 
     for i, package in enumerate(packages):
         info = package_info[i]
-        if not info.endswith('is not installed'):
+        if not info.endswith("is not installed"):
             package_map[package] = info
 
     return json.dumps(package_map)
+
 
 def check_upgrade(session, args):
     # TODO:
@@ -234,16 +268,19 @@ def upgrade():
     pass
 
 
-CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
+CONFIGURATION_FILE = "/etc/yum.repos.d/xcp-ng.repo"
 
 
 # returns a JSON dict {repo_id: proxy}
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = ConfigParser.ConfigParser({"proxy": "_none_"})
     config.read(CONFIGURATION_FILE)
-    new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
+    new_dict = dict(
+        (section, config.get(section, "proxy", "_none_"))
+        for section in config.sections()
+    )
     return json.dumps(new_dict)
 
 
@@ -256,43 +293,54 @@ def get_proxies(session, args):
 def set_proxies(session, args):
     # '{"xcp-ng-base": "http://192.168.100.82:3142"}'
     # '{"xcp-ng-base": "_none_"}'
-    special_url_prefix = 'http://HTTPS///'
-    https_url_prefix = 'https://'
-    proxies = json.loads(args['proxies'])
+    special_url_prefix = "http://HTTPS///"
+    https_url_prefix = "https://"
+    proxies = json.loads(args["proxies"])
     config = ConfigParser.ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
-        raise Exception('could not read file %s' % CONFIGURATION_FILE)
+        raise Exception("could not read file %s" % CONFIGURATION_FILE)
 
     for section in proxies:
         if not config.has_section(section):
             raise Exception("Can't find section '%s' in config file" % section)
 
         # idempotence
-        if proxies[section] == '_none_' and not config.has_option(section, 'proxy'):
+        if proxies[section] == "_none_" and not config.has_option(section, "proxy"):
             continue
-        if config.has_option(section, 'proxy') and config.get(section, 'proxy') == proxies[section]:
+        if (
+            config.has_option(section, "proxy")
+            and config.get(section, "proxy") == proxies[section]
+        ):
             continue
 
-        config.set(section, 'proxy', proxies[section])
-        url = config.get(section, 'baseurl')
-        if proxies[section] == '_none_' and url.startswith(special_url_prefix):
-            config.set(section, 'baseurl', https_url_prefix + url[len(special_url_prefix):])
-        elif proxies[section] != '_none_' and url.startswith(https_url_prefix):
-            config.set(section, 'baseurl', special_url_prefix + url[len(https_url_prefix):])
+        config.set(section, "proxy", proxies[section])
+        url = config.get(section, "baseurl")
+        if proxies[section] == "_none_" and url.startswith(special_url_prefix):
+            config.set(
+                section, "baseurl", https_url_prefix + url[len(special_url_prefix) :]
+            )
+        elif proxies[section] != "_none_" and url.startswith(https_url_prefix):
+            config.set(
+                section, "baseurl", special_url_prefix + url[len(https_url_prefix) :]
+            )
         else:
-            raise Exception('Unexpected URL "%s" for proxy "%s" in section "%s"' % (url, proxies[section], section))
+            raise Exception(
+                'Unexpected URL "%s" for proxy "%s" in section "%s"'
+                % (url, proxies[section], section)
+            )
 
-    with open(CONFIGURATION_FILE, 'wb') as configfile:
+    with open(CONFIGURATION_FILE, "wb") as configfile:
         config.write(configfile)
-    return ''
+    return ""
 
-_LOGGER = configure_logging('updater')
+
+_LOGGER = configure_logging("updater")
 if __name__ == "__main__":
     XenAPIPlugin.dispatch({
-        'install': install,
-        'check_update': check_update,
-        'update': update,
-        'query_installed': query_installed,
-        'get_proxies': get_proxies,
-        'set_proxies': set_proxies
+        "install": install,
+        "check_update": check_update,
+        "update": update,
+        "query_installed": query_installed,
+        "get_proxies": get_proxies,
+        "set_proxies": set_proxies,
     })

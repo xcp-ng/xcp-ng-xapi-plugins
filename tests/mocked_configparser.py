@@ -4,13 +4,13 @@ class ConfigParser(object):
         self._sections = {}
 
     def sections(self):
-        raise Exception('Mock me!')
+        raise Exception("Mock me!")
 
     def read(self, filepath):
-        raise Exception('Mock me!')
+        raise Exception("Mock me!")
 
     def write(self, filepath):
-        raise Exception('Mock me!')
+        raise Exception("Mock me!")
 
     def has_section(self, section_name):
         return section_name in self.sections()
