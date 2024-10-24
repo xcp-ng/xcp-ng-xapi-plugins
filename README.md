@@ -201,6 +201,91 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=hyperthreading.py fn=get_hyperthre
 true
 ```
 
+## Ipmitool
+
+A xapi plugin that uses `ipmitool` to get information about sensors and the IPMI server. Before
+running the commands you need to ensure that your system have support for IPMI.
+
+### `is_ipmi_device_available`
+
+Returns `true` if IPMI device is found and `ipmitool` can be used. If it could not open device at `/dev/ipmi*`
+it returns `false`. In that case you need to ensure the IPMI module is loaded and that your system
+supports IPMI. Others unexpected errors raise a XenAPIPlugin error.
+
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=ipmitool.py fn=is_ipmi_device_available
+false
+```
+
+If `true` is returned you should be able to run `get_all_sensors`, `get_sensor`
+or `get_ipmi_lan` without raising a XenAPIPlugin error.
+
+### `get_all_sensors`
+
+Returns a JSON containing all sensor data repository entries and readings or raise a XenAPIPlugin error.
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=ipmitool.py fn=get_all_sensors
+[
+ {"name": "Fan1A", "value": "10920 RPM", "event": "ok"},
+ {"name": "Fan2A", "value": "10800 RPM", "event": "ok"},
+ {"name": "Inlet Temp", "value": "23 degrees C", "event": "ok"},
+ {"name": "Exhaust Temp", "value": "28 degrees C", "event": "ok"},
+ {"name": "Temp", "value": "38 degrees C", "event": "ok"}
+ {"name": "PFault Fail Safe", "value": "Not Readable", "event": "ns"}
+ ...
+]
+```
+
+### `get_sensor`
+
+Returns a JSON containing detailed information about the sensors passed as paramaters
+or raise an XenAPIPlugin error. The names of the sensors can be found by running `get_all_sensors`
+function. If a wrong sensor name is passed an error is logged in `/var/log/ipmitool-xapi-plugin-plugin.log`
+and the sensor is skipped.
+
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=ipmitool.py fn=get_sensor args:sensors="Fan7B,PFault Fail Safe"
+[
+  {
+    "name": "Fan7B",
+    "info": [{"name": "Sensor ID", "value": "Fan7B (0x3d)"}, {"name": "Entity ID", "value": "7.1 (System Board)"}, {"name": "Sensor Type (Threshold)", "value": "Fan (0x04)"}, {"name": "Sensor Reading", "value": "10320 (+/- 120) RPM"}, {"name": "Status", "value": "ok"}, {"name": "Nominal Reading", "value": "6720.000"}, {"name": "Normal Minimum", "value": "16680.000"}, {"name": "Normal Maximum", "value": "23640.000"}, {"name": "Lower critical", "value": "720.000"}, {"name": "Lower non-critical", "value": "840.000"}, {"name": "Positive Hysteresis", "value": "120.000"}, {"name": "Negative Hysteresis", "value": "120.000"}, {"name": "Minimum sensor range", "value": "Unspecified"}, {"name": "Maximum sensor range", "value": "Unspecified"}, {"name": "Event Message Control", "value": "Per-threshold"}, {"name": "Readable Thresholds", "value": "lcr lnc"}, {"name": "Settable Thresholds", "value": ""}, {"name": "Threshold Read Mask", "value": "lcr lnc"}, {"name": "Assertion Events", "value": ""}, {"name": "Assertions Enabled", "value": "lnc- lcr-"}, {"name": "Deassertions Enabled", "value": "lnc- lcr-"}]
+  },
+  {
+    "name": "PFault Fail Safe",
+    "info": [{"name": "Sensor ID", "value": "PFault Fail Safe (0x66)"}, {"name": "Entity ID", "value": "7.1 (System Board)"}, {"name": "Sensor Type (Discrete)", "value": "Voltage (0x02)"}, {"name": "Sensor Reading", "value": "No Reading"}, {"name": "Event Message Control", "value": "Per-threshold"}, {"name": "OEM", "value": "0"}]
+  }
+]
+```
+
+### `get_ipmi_lan`
+
+Returns JSON that contains information about the configuration of the network related to the IPMI server
+or raise a XenAPIPlugin error.
+
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=ipmitool.py fn=get_ipmi_lan
+[
+  {
+    "name": "IP Address Source",
+    "value": "Static Address"
+  },
+  {
+    "name": "IP Address",
+    "value": "1.2.3.4"
+  },
+  {
+    "name": "Subnet Mask",
+    "value": "255.255.255.0"
+  },
+  {
+    "name": "MAC Address",
+    "value": "a8:ac:a2:a5:a0:ae"
+  },
+  ...
+]
+
+```
+
 ## Tests
 
 To run the plugins' unit tests you'll need to install `pytest`, `pyfakefs` and `mock`.
