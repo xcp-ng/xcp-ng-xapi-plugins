@@ -20,29 +20,25 @@ def _list_devices():
 @error_wrapped
 def get_information(session, args):
     results = {}
-    i = 0
     with OperationLocker():
         devices = _list_devices()
         for device in devices:
-            cmd = run_command(["smartctl", "-j", "-a", "-d", devices[i]['name'], devices[i]['type']], check=False)
+            cmd = run_command(["smartctl", "-j", "-a", "-d", device['name'], device['type']], check=False)
             results[device] = json.loads(cmd['stdout'])
-            i = i + 1
         return json.dumps(results)
 
 @error_wrapped
 def get_health(session, args):
     results = {}
-    i = 0
     with OperationLocker():
         devices = _list_devices()
         for device in devices:
-            cmd = run_command(["smartctl", "-j", "-H", "-d", devices[i]['name'], devices[i]['type']])
+            cmd = run_command(["smartctl", "-j", "-H", "-d", device['name'], device['type']], check=False)
             json_output = json.loads(cmd['stdout'])
             if json_output['smart_status']['passed']:
                 results[disk] = "PASSED"
             else:
                 results[disk] = "FAILED"
-            i = i + 1
         return json.dumps(results)
 
 
