@@ -10,24 +10,23 @@ from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.operationlocker import OperationLocker
 
 @error_wrapped
-def _list_disks():
-    disks = []
+def _list_devices():
+    devices = []
     result = run_command(['smartctl', '--scan'])
     for line in result['stdout'].splitlines():
-        disks.append(line.split()[2])
-        disks.append(line.split()[0])
-    return disks
+        devices.append({'name': line.split()[0], 'type':line.split()[2]})
+    return devices
 
 @error_wrapped
 def get_information(session, args):
     results = {}
     i = 0
     with OperationLocker():
-        disks = _list_disks()
-        for disk in disks:
-            cmd = run_command(["smartctl", "-j", "-a", "-d", disks[i], disks[i+1]], check=False)
-            results[disk] = json.loads(cmd['stdout'])
-            i = i + 2
+        devices = _list_devices()
+        for device in devices:
+            cmd = run_command(["smartctl", "-j", "-a", "-d", devices[i]['name'], devices[i]['type']], check=False)
+            results[device] = json.loads(cmd['stdout'])
+            i = i + 1
         return json.dumps(results)
 
 @error_wrapped
@@ -35,15 +34,15 @@ def get_health(session, args):
     results = {}
     i = 0
     with OperationLocker():
-        disks = _list_disks()
-        for disk in disks:
-            cmd = run_command(["smartctl", "-j", "-H", "-d", disks[i], disks[i+1]])
+        devices = _list_devices()
+        for device in devices:
+            cmd = run_command(["smartctl", "-j", "-H", "-d", devices[i]['name'], devices[i]['type']])
             json_output = json.loads(cmd['stdout'])
             if json_output['smart_status']['passed']:
                 results[disk] = "PASSED"
             else:
                 results[disk] = "FAILED"
-            i = i + 2
+            i = i + 1
         return json.dumps(results)
 
 
