@@ -79,10 +79,10 @@ SMARTCTL_INFO_EXPECTED = """{
 }"""
 
 @mock.patch("smartctl.run_command", autospec=True)
-@mock.patch("smartctl._list_disks", autospec=True)
+@mock.patch("smartctl._list_devices", autospec=True)
 class TestSmartctl:
-    def test_smartctl_error(self, _list_disks, run_command, fs):
-        _list_disks.side_effect = Exception("Error!")
+    def test_smartctl_error(self, _list_devices, run_command, fs):
+        _list_devices.side_effect = Exception("Error!")
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             get_health(None, None)
