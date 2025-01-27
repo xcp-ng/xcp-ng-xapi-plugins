@@ -38,7 +38,7 @@ SMARTCTL_HEALTH = """{
 }"""
 
 SMARTCTL_HEALTH_EXPECTED = """{
-  "/dev/sda": "PASSED"
+        "/dev/sda:sat": "PASSED"
 }"""
 
 SMARTCTL_INFO = """{
@@ -65,7 +65,7 @@ SMARTCTL_INFO = """{
 }"""
 
 SMARTCTL_INFO_EXPECTED = """{
-  "/dev/sda": {
+    "/dev/sda:sat": {
     "json_format_version": [1, 0],
     "smartctl": {
       "argv": ["smartctl", "-j", "-a", "/dev/sda"],
@@ -89,15 +89,15 @@ class TestSmartctl:
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
 
-    def test_smartctl_information(self, _list_disks, run_command, fs):
-        _list_disks.return_value = ["/dev/sda"]
+    def test_smartctl_information(self, _list_devices, run_command, fs):
+        _list_devices.return_value = [{"name": "/dev/sda", "type": "sat"}]
         run_command.return_value = {"stdout": SMARTCTL_INFO}
 
         res = get_information(None, None)
         assert json.loads(res) == json.loads(SMARTCTL_INFO_EXPECTED)
 
-    def test_smartctl_health(self, _list_disks, run_command, fs):
-        _list_disks.return_value = ["/dev/sda"]
+    def test_smartctl_health(self, _list_devices, run_command, fs):
+        _list_devices.return_value = [{"name": "/dev/sda", "type": "sat"}]
         run_command.return_value = {"stdout": SMARTCTL_HEALTH}
 
         res = get_health(None, None)
