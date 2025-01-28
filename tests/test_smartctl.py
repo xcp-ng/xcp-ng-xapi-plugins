@@ -4,79 +4,18 @@ import pytest
 import XenAPIPlugin
 
 from smartctl import get_information, get_health
+from smartctl_outputs.smartctl_sda import INFO_SDA, HEALTH_SDA
+from smartctl_outputs.smartctl_nvme1 import INFO_NVME1, HEALTH_NVME1
+from smartctl_outputs.smartctl_megaraid0 import INFO_MEGARAID0, HEALTH_MEGARAID0
+from smartctl_outputs.smartctl_megaraid1 import INFO_MEGARAID1, HEALTH_MEGARAID1
+from smartctl_outputs.smartctl_expected_output import EXPECTED_INFO, EXPECTED_HEALTH
 
-SMARTCTL_HEALTH = """{
-  "json_format_version": [
-    1,
-    0
-  ],
-  "smartctl": {
-    "version": [
-      7,
-      0
-    ],
-    "svn_revision": "4883",
-    "platform_info": "x86_64-linux-4.19.0+1",
-    "build_info": "(local build)",
-    "argv": [
-      "smartctl",
-      "-j",
-      "-H",
-      "/dev/sda"
-    ],
-    "exit_status": 0
-  },
-  "device": {
-    "name": "/dev/sda",
-    "info_name": "/dev/sda [SAT]",
-    "type": "sat",
-    "protocol": "ATA"
-  },
-  "smart_status": {
-    "passed": true
-  }
-}"""
-
-SMARTCTL_HEALTH_EXPECTED = """{
-        "/dev/sda:sat": "PASSED"
-}"""
-
-SMARTCTL_INFO = """{
-  "json_format_version": [
-    1,
-    0
-  ],
-  "smartctl": {
-    "version": [
-      7,
-      0
-    ],
-    "svn_revision": "4883",
-    "platform_info": "x86_64-linux-4.19.0+1",
-    "build_info": "(local build)",
-    "argv": [
-      "smartctl",
-      "-j",
-      "-a",
-      "/dev/sda"
-    ],
-    "exit_status": 0
-  }
-}"""
-
-SMARTCTL_INFO_EXPECTED = """{
-    "/dev/sda:sat": {
-    "json_format_version": [1, 0],
-    "smartctl": {
-      "argv": ["smartctl", "-j", "-a", "/dev/sda"],
-      "build_info": "(local build)",
-      "exit_status": 0,
-      "platform_info": "x86_64-linux-4.19.0+1",
-      "svn_revision": "4883",
-      "version": [7, 0]
-    }
-  }
-}"""
+LIST_OF_DEVICES = [
+    {"name": "/dev/sda", "type": "sat"},
+    {"name": "/dev/nvme1", "type": "nvme"},
+    {"name": "/dev/bus/0", "type": "megaraid,0"},
+    {"name": "/dev/bus/0", "type": "megaraid,1"},
+]
 
 @mock.patch("smartctl.run_command", autospec=True)
 @mock.patch("smartctl._list_devices", autospec=True)
@@ -90,15 +29,25 @@ class TestSmartctl:
         assert e.value.params[1] == 'Error!'
 
     def test_smartctl_information(self, _list_devices, run_command, fs):
-        _list_devices.return_value = [{"name": "/dev/sda", "type": "sat"}]
-        run_command.return_value = {"stdout": SMARTCTL_INFO}
+        _list_devices.return_value = LIST_OF_DEVICES
+        run_command.side_effect = [
+            {"stdout": INFO_SDA},
+            {"stdout": INFO_NVME1},
+            {"stdout": INFO_MEGARAID0},
+            {"stdout": INFO_MEGARAID1},
+        ]
 
         res = get_information(None, None)
-        assert json.loads(res) == json.loads(SMARTCTL_INFO_EXPECTED)
+        assert json.loads(res) == json.loads(EXPECTED_INFO)
 
     def test_smartctl_health(self, _list_devices, run_command, fs):
-        _list_devices.return_value = [{"name": "/dev/sda", "type": "sat"}]
-        run_command.return_value = {"stdout": SMARTCTL_HEALTH}
+        _list_devices.return_value = LIST_OF_DEVICES
+        run_command.side_effect = [
+            {"stdout": HEALTH_SDA},
+            {"stdout": HEALTH_NVME1},
+            {"stdout": HEALTH_MEGARAID0},
+            {"stdout": HEALTH_MEGARAID1},
+        ]
 
         res = get_health(None, None)
-        assert json.loads(res) == json.loads(SMARTCTL_HEALTH_EXPECTED)
+        assert json.loads(res) == json.loads(EXPECTED_HEALTH)
