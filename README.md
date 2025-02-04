@@ -152,17 +152,33 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=lsblk.py fn=list_block_devices
 
 ## Smartctl parser
 
-A xapi plugin to get information and health of physical disks on the host
+This XAPI plugin provides information and health details for the physical disks on the host. 
+
+It uses the `smartctl --scan` command to retrieve the list of devices. For devices managed by
+MegaRAID, the device names may be identical. To handle this, the plugin returns information
+for each unique "name:type" pair.
+
+The plugin parses the JSON output from the `smartctl` command to gather information and health
+data. As a result, it requires a version of `smartctl` capable of producing JSON output.
+This functionality is available in **XCP-ng 8.3**, but not in **XCP-ng 8.2**.
+
 ### `information`:
+
+This function returns information about all detected devices. The JSON can be quite big.
+
 ```
 xe host-call-plugin host-uuid=<uuid> plugin=smartctl.py fn=information
-{"/dev/sdf": {"power_on_time": {"hours": 9336}, "ata_version": {"minor_value": 94, "string": "ACS-4 T13/BSR INCITS 529 revision 5", "major_value": 2556}, "form_factor": {"ata_value": 3, "name": "2.5 inches"}, "firmware_version": "SVQ02B6Q", "wwn": {"oui": 9528, "naa": 5, "id": 65536604056}, "smart_status": {"passed": true}, "smartctl": {"build_info": "(local build)", "exit_status": 0, "argv": ["smartctl", "-j", "-a", "/dev/sdf"], "version": [7, 0], "svn_revision": "4883", "platform_info": "x86_64-linux-4.19.0+1"}, "temperature": {"current": 35}, "rotation_rate": 0, "interface_speed": {"current": {"sata_value": 3, "units_per_second": 60, "string": "6.0 Gb/s", "bits_per_unit": 100000000}, [...] }
+{"/dev/nvme1:nvme": {"smart_status": {"nvme": {"value": 0}, "passed": true}, "nvme_controller_id": 0, "smartctl": {"build_info": "(local build)", "exit_status": 0, "argv": ["smartctl", "-j", "-a", "-d", "nvme",
+ "/dev/nvme1"], "version": [7, 0], "svn_revision": "4883", "platform_info": "x86_64-linux-4.19.0+1"}, "temperature": {"current": 32}, ...
 ```
 
 ### `health`:
+
+This function returns health status per detected devices.
+
 ```
 xe host-call-plugin host-uuid=<uuid>  plugin=smartctl.py fn=health
-{"/dev/sdf": "PASSED", "/dev/sdg": "PASSED", "/dev/sdd": "PASSED", "/dev/sde": "PASSED", "/dev/sdb": "PASSED", "/dev/sdc": "PASSED", "/dev/sda": "PASSED"}
+{"/dev/nvme1:nvme": "PASSED", "/dev/sda:scsi": "PASSED", "/dev/nvme0:nvme": "PASSED", "/dev/bus/0:megaraid,1": "PASSED", "/dev/bus/0:megaraid,0": "PASSED"}
 ```
 
 ## Netdata
