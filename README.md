@@ -194,49 +194,58 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=hyperthreading.py fn=get_hyperthre
 true
 ```
 
-## XCP-ng Kalray DPU
+## XCP-ng: XAPI plugin to manage Kalray DPU
 
-A xapi plugin to get information about raids, logical volume store (LVS) and
-devices that are present on the Kalray DPU. It also allow the management of
-logical volumes (LV): creation and deletion. Parameters depends of the name of
-the command some are always available:
-  - *username*: username to use to connect to DPU (required)
-  - *password*: password to connect to DPU (required)
-  - *server*: IP of the server for configuring the DPU (default: localhost)
-  - *port*: Port to use (default: 8080)
-  - *timeout*: timeout in second (default: 60.0)
+To enable communication with Kalray DPU from xcp-ng, we created a xapi plugin.
+
+This pkugin sends JSON-RPC commands to a server running on the DPU to retrieve
+information about RAIDs, the logical volume store (LVS), and devices present on
+the Kalray DPU. 
+
+It also allows the management of logical volumes (LV), including creation and
+deletion.
+
+Parameters vary depending on the command; some parameters are always available
+such as:
+  - *username*: the username to use when connecting to the DPU (required)
+  - *password*: the password to use when connecting to the DPU (required)
+  - *server*: the IP of the server for configuring the DPU (default: localhost)
+  - *port*: the port to use (default: 8080)
+  - *timeout*: the timeout in seconds (default: 60.0)
 
 ### Command details
 
-- Currently the Kalray DPU is still in developpement and there are some
+- **Restrictions**: Currently the Kalray DPU is still in development and there are some
 restrictions:
-    - To be able to expose virtual functions the Kalray poller expects
-    specific names for the logical volume store and for the volume. It
-    depends of the configuration used in `/etc/kalray/0000:XX:00.1.conf`.
-    - By default the logical volume store name **must be** `lvs`.
-    - By default the volume must start with `volume_`.
-    - With the current DPU only four virtual functions (and so only four NVMe
-    disks) can be created and so you can only use the following name:
+    - To expose virtual functions, the Kalray poller expects specific names for the 
+    logical volume store and the volume. These names depend of the configuration used
+    in `/etc/kalray/0000:XX:00.1.conf`.
+    - By default, the logical volume store name **must be** `lvs`.
+    - By default, the volume must start with `volume_`.
+    - With the current DPU, only four virtual functions (and thus only four NVMe
+    disks) can be created. Therefore, you can only use the following volume names:
         - `volume_09`
         - `volume_10`
         - `volume_11`
         - `volume_12`
     - Only volumes can be deleted.
 
-#### Block devices
+#### Supported commands
 
 ##### Get the list of devices on the Kalray DPU
-```
+
+- We can retrieve the list of NVMe devices by running:
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=get_devices \
     args:username=<username> args:password=<password>
 [{"name": "HotInNvmeWDS500AFY0-22050C800415n1", "aliases": [], "product_name": "NVMe disk", "block_size": 512, "num_blocks": 976773168, "uuid": "e8238fa6-bf53-0001-001b-448b45afa6a7", "assigned_rate_limits": {"rw_ios_per_sec": 0, "rw_mbytes_per_sec": 0, "r_mbytes_per_sec": 0, "w_mbytes_per_sec": 0}, "claimed": false, "zoned": false, "supported_io_types": {"read": true, "write": true, "unmap": true, "write_zeroes": true, "flush": true, "reset": true, "nvme_admin": true, "nvme_io": true}, "driver_specific": {"nvme": [{"pci_address": "0000:00:00.0", "trid": {"trtype": "PCIe", "traddr": "0000:00:00.0"}, "ctrlr_data": {"cntlid": 8224, "vendor_id": "0x15b7", "model_number": "WDS500G1X0E-00AFY0", "serial_number": "22050C800415", "firmware_revision": "614900WD", "subnqn": "nqn.2018-01.com.wdc:nguid:E8238FA6BF53-0001-001B448B45AFA6A7", "oacs": {"security": 1, "format": 1, "firmware": 1, "ns_manage": 0}, "multi_ctrlr": false, "ana_reporting": false}, "vs": {"nvme_version": "1.4"}, "ns_data": {"id": 1, "can_share": false}, "security": {"opal": false}}], "mp_policy": "active_passive"}}, {"name": "HotInNvmeWDS500AFY0-22050C800378n1", "aliases": [], "product_name": "NVMe disk", "block_size": 512, "num_blocks": 976773168, "uuid": "e8238fa6-bf53-0001-001b-448b45afe330", "assigned_rate_limits": {"rw_ios_per_sec": 0, "rw_mbytes_per_sec": 0, "r_mbytes_per_sec": 0, "w_mbytes_per_sec": 0}, "claimed": false, "zoned": false, "supported_io_types": {"read": true, "write": true, "unmap": true, "write_zeroes": true, "flush": true, "reset": true, "nvme_admin": true, "nvme_io": true}, "driver_specific": {"nvme": [{"pci_address": "0000:00:01.0", "trid": {"trtype": "PCIe", "traddr": "0000:00:01.0"}, "ctrlr_data": {"cntlid": 8224, "vendor_id": "0x15b7", "model_number": "WDS500G1X0E-00AFY0", "serial_number": "22050C800378", "firmware_revision": "614900WD", "subnqn": "nqn.2018-01.com.wdc:nguid:E8238FA6BF53-0001-001B448B45AFE330", "oacs": {"security": 1, "format": 1, "firmware": 1, "ns_manage": 0}, "multi_ctrlr": false, "ana_reporting": false}, "vs": {"nvme_version": "1.4"}, "ns_data": {"id": 1, "can_share": false}, "security": {"opal": false}}], "mp_policy": "active_passive"}}]
 ```
 
-#### RAID
-
 ##### Create a raid on the Kalray DPU
-- Supported RAID are raid0, raid1 and raid10
-```
+
+- The plugin also supported RAID creation. Currently, the DPU supports RAID levels raid0, raid1, and raid10.
+For example: 
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=raid_create \
     args:username=<username> args:password=<password> \
     args:base_bdevs=HotInNvmeWDS500AFY0-22050C800415n1,HotInNvmeWDS500AFY0-22050C800378n1 \
@@ -246,15 +255,21 @@ true
 ```
 
 ##### Get the list of raids on the Kalray DPU
-```
+
+- We can retrieve the list of created RAIDs by running:
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=get_raids \
     args:username=<username> args:password=<password>
 ["raid0"]
 ```
 
 #### Logical Volume Store (LVS)
+
+- The DPU manages storage using logical volume stores. With the plugin, you can create an LVS, list existing
+LVS, and delete them.
+
 ##### Create an LVS on the Kalray DPU
-```
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=lvs_create \
     args:username=<username> args:password=<password> \
     args:lvs_name=lvs \
@@ -263,7 +278,7 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=lvs_create \
 ```
 
 ##### Get the list of LVS on the Kalray DPU
-```
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=get_lvs \
     args:username=<username> args:password=<password>
 [{"uuid": "6fb90332-56e4-4d03-aa6a-f858a2c2ca97", "name": "lvs", "passive": false, "base_bdev": "raid0", "total_data_clusters": 29804, "free_clusters": 29772, "block_size": 512, "cluster_size": 33554432}]
@@ -271,7 +286,7 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=get_lvs \
 
 #### Logical Volume (LVOL)
 ##### Create a new logical volume
-```
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=lvol_create \
     args:username=<username> args:password=<password> \
     args:lvol_name=volume_09 \
@@ -281,11 +296,12 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=lvol_create \
 ```
 
 ##### Delete a logical volume
-- The name of the volume to be deleted is not the same than the one used to
-create it. You need to prepend the name of the logical volume store as shown
+
+- Note that the name of the volume to be deleted is not the same as the one used 
+during creation. You must prepend the name of the logical volume store, as shown
 in the example:
 
-```
+```sh
 $ xe host-call-plugin host-uuid=<uuid> plugin=kalray_dpu.py fn=lvol_delete \
     args:username=<username> args:password=<password> \
     args:lvol_name=lvs/volume_09
