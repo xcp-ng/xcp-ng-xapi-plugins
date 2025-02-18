@@ -302,6 +302,42 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=ipmitool.py fn=get_ipmi_lan
 
 ```
 
+## Service
+
+A xapi plugin that uses `systemctl` to manage services.
+
+### `start_service`
+
+Start a service if it is not already running.
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=service.py fn=start_service args:service=<service>
+```
+
+### `stop_service`
+
+Stop a service if it is currently running.
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=service.py fn=stop_service args:service=<service>
+```
+
+### `restart_service`
+
+Stop a service if it is running and then start it.
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=service.py fn=restart_service args:service=<service>
+```
+
+### `try_restart_service`
+
+Restart a service only if it is already running.
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=service.py fn=try_restart_service args:service=<service>
+```
+
 ## Tests
 
 To run the plugins' unit tests you'll need to install `pytest`, `pyfakefs` and `mock`.
