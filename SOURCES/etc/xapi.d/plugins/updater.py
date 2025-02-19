@@ -4,12 +4,10 @@
 from functools import wraps
 import ConfigParser
 import json
-import sys
 import yum
 
 import XenAPIPlugin
 
-sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.filelocker import FileLocker
 

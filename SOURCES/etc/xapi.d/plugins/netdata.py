@@ -6,11 +6,9 @@
 
 import errno
 import json
-import sys
 
 import XenAPIPlugin
 
-sys.path.append('.')
 from xcpngutils import configure_logging, error_wrapped, install_package, run_command
 from xcpngutils.operationlocker import OperationLocker
 

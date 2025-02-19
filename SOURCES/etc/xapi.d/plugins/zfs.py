@@ -3,11 +3,9 @@
 
 import errno
 import json
-import sys
 
 import XenAPIPlugin
 
-sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
 
 # returns a JSON dict {<poolname>: {mountpoint: <mountpoint>, ...}}
