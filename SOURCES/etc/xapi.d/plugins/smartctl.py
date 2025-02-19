@@ -2,10 +2,8 @@
 # -*- coding: utf-8 -*-
 
 import json
-import sys
 import XenAPIPlugin
 
-sys.path.append('.')
 from xcpngutils import configure_logging, run_command, error_wrapped
 from xcpngutils.operationlocker import OperationLocker
 
