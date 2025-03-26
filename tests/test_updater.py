@@ -28,7 +28,7 @@ class TestInstall:
         packages = 'toto tata titi'
         install(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'install', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+            ['yum', 'install', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y'] + packages.split(' ')
         )
 
     def test_install_without_packages(self, run_command, fs):
@@ -72,7 +72,7 @@ class TestUpdate:
         packages = 'toto tata titi'
         update(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y'] + packages.split(' ')
         )
 
     def test_update_error(self, run_command, fs):
@@ -112,7 +112,7 @@ class TestUpdate:
         packages = 'donald hortense'
         update(mock.MagicMock(), {'repos': 'riri, fifi, loulou', 'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y', packages]
+            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y'] + packages.split(' ')
         )
 
 @mock.patch('updater.run_command', autospec=True)

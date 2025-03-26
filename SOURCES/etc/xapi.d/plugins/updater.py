@@ -95,6 +95,15 @@ def operationlock(*pid_args, **pid_kwargs):
         return decorator
     return wrapper
 
+def get_packages_from_args(args):
+    packages = args.get('packages')
+    if not packages:
+        return []
+
+    import re
+    packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
+    packages = filter(lambda package: package, packages)
+    return dict.fromkeys(packages, '')
 
 def display_package(p):
     if len(p.changelog):
@@ -113,7 +122,7 @@ def build_repo_list(enabled_repos, additional_repos):
 def install_helper(session, args, action):
     assert action in ('install', 'update')
 
-    packages = args.get('packages')
+    packages = list(get_packages_from_args(args))
     if action == 'install' and not packages:
         raise Exception('Missing or empty argument `packages`')
 
@@ -139,7 +148,7 @@ def install_helper(session, args, action):
 
         command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
         if packages:
-            command.append(packages)
+            command.extend(packages)
         res = run_command(command)
         session.xenapi.task.set_status(task, 'success')
     except Exception as e:
@@ -181,19 +190,11 @@ def update(session, args):
 
 @error_wrapped
 def query_installed(session, args):
-    packages = args.get('packages')
-    if not packages:
+    package_map = get_packages_from_args(args)
+    if not package_map:
         return '{}'
 
-    import re
-    packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
-    packages = filter(lambda package: package, packages)
-    if not packages:
-        return '{}'
-
-    package_map = dict.fromkeys(packages, '')
     packages = list(package_map)
-
     command = ['rpm', '-q'] + packages
     result = run_command(command, check=False)
     package_info = result['stdout'].rstrip().split('\n')
