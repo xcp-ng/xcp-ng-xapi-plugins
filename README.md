@@ -338,6 +338,110 @@ Restart a service only if it is already running.
 $ xe host-call-plugin host-uuid<uuid> plugin=service.py fn=try_restart_service args:service=<service>
 ```
 
+
+### `sdncontroller`
+
+Add, delete rules and dump openflow rules.
+
+#### Add rule
+
+Parameters for adding a rule:
+- *bridge* :  The name of the bridge to add rule to.
+- *priority* (optional): A number between 0 and 65535 for the rule priority.
+- *mac* (optional): The MAC address of the VIF to create the rule for, if not
+  specified, a network-wide rule will be created.
+- *iprange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
+- *direction*: can be **from**, **to** or **from/to**
+  - *to*: means the parameters for **port** and **iprange** are to be used as destination
+  - *from*: means they will be use as source
+  - *from/to*: 2 rules will be created, one per direction
+- *protocol*: IP, TCP, UDP, ICMP or ARP
+- *port*: required for TCP/UDP protocol
+- *allow*: If set to false the packets are dropped.
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
+  fn=add-rule                   \
+  args:bridge="xenbr0"          \
+  args:priority="100"           \
+  args:mac="6e:0b:9e:72:ab:c6"  \
+  args:iprange="192.168.1.0/24" \
+  args:direction="from/to"      \
+  args:protocol="tcp"           \
+  args:port="22"                \
+  args:allow="false"
+```
+
+##### Delete rule
+
+Parameters for removing a rule:
+- *bridge* :  The name of the bridge to delete the rule from.
+- *mac* (optional): The MAC address of the VIF to delete the rule for.
+- *iprange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
+- *direction*: can be **from**, **to** or **from/to**
+  - *to*: means the parameters for **port** and **iprange** are to be used as destination
+  - *from*: means they will be use as source
+  - *from/to*: 2 rules will be created, one per direction
+- *protocol*: IP, TCP, UDP, ICMP or ARP
+- *port*: required for TCP/UDP protocol
+
+```
+$ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
+  fn=del-rule                   \
+  args:bridge="xenbr0"          \
+  args:mac="6e:0b:9e:72:ab:c6"  \
+  args:iprange="192.168.1.0/24" \
+  args:direction="from/to"      \
+  args:protocol="tcp"           \
+  args:port="22"
+```
+
+##### Dump flows
+
+- This command will return all flows entries in the bridge passed as a parameter.
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py fn=dump-flows args:bridge=xenbr0 | jq .
+{
+  "returncode": 0,
+  "command": [
+    "ovs-ofctl",
+    "dump-flows",
+    "xenbr0"
+  ],
+  "stderr": "",
+  "stdout": "NXST_FLOW reply (xid=0x4):\n cookie=0x0, duration=248977.339s, table=0, n_packets=24591786, n_bytes=3278442075, idle_age=0, hard_age=65534, priority=0 actions=NORMAL\n"
+}
+```
+
+- This error is raised when the bridge parameter is missing:
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py fn=dump-flows | jq .
+{
+  "returncode": 1,
+  "command": [
+    "ovs-ofctl",
+    "dump-flows"
+  ],
+  "stderr": "bridge parameter is missing",
+  "stdout": ""
+}
+```
+
+- If the bridge is unknown, the following error will occur:
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py args:bridge=xenbr10 fn=dump-flows | jq .
+{
+  "returncode": 1,
+  "command": [
+    "ovs-ofctl",
+    "dump-flows",
+    "xenbr10"
+  ],
+  "stderr": "ovs-ofctl: xenbr10 is not a bridge or a socket\n",
+  "stdout": ""
+}
+```
+
 ## Tests
 
 To run the plugins' unit tests you'll need to install `pytest`, `pyfakefs` and `mock`.
