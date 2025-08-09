@@ -350,9 +350,9 @@ Parameters for adding a rule:
 - *priority* (optional): A number between 0 and 65535 for the rule priority.
 - *mac* (optional): The MAC address of the VIF to create the rule for, if not
   specified, a network-wide rule will be created.
-- *iprange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
+- *ipRange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
 - *direction*: can be **from**, **to** or **from/to**
-  - *to*: means the parameters for **port** and **iprange** are to be used as destination
+  - *to*: means the parameters for **port** and **ipRange** are to be used as destination
   - *from*: means they will be use as source
   - *from/to*: 2 rules will be created, one per direction
 - *protocol*: IP, TCP, UDP, ICMP or ARP
@@ -365,7 +365,7 @@ $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
   args:bridge="xenbr0"          \
   args:priority="100"           \
   args:mac="6e:0b:9e:72:ab:c6"  \
-  args:iprange="192.168.1.0/24" \
+  args:ipRange="192.168.1.0/24" \
   args:direction="from/to"      \
   args:protocol="tcp"           \
   args:port="22"                \
@@ -377,9 +377,9 @@ $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
 Parameters for removing a rule:
 - *bridge* :  The name of the bridge to delete the rule from.
 - *mac* (optional): The MAC address of the VIF to delete the rule for.
-- *iprange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
+- *ipRange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
 - *direction*: can be **from**, **to** or **from/to**
-  - *to*: means the parameters for **port** and **iprange** are to be used as destination
+  - *to*: means the parameters for **port** and **ipRange** are to be used as destination
   - *from*: means they will be use as source
   - *from/to*: 2 rules will be created, one per direction
 - *protocol*: IP, TCP, UDP, ICMP or ARP
@@ -390,7 +390,7 @@ $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
   fn=del-rule                   \
   args:bridge="xenbr0"          \
   args:mac="6e:0b:9e:72:ab:c6"  \
-  args:iprange="192.168.1.0/24" \
+  args:ipRange="192.168.1.0/24" \
   args:direction="from/to"      \
   args:protocol="tcp"           \
   args:port="22"
