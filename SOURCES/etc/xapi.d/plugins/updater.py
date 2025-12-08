@@ -1,8 +1,8 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-import ConfigParser
+import configparser
 import json
 import yum
 
@@ -239,7 +239,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = configparser.ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
     new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
     return json.dumps(new_dict)
@@ -257,7 +257,7 @@ def set_proxies(session, args):
     special_url_prefix = 'http://HTTPS///'
     https_url_prefix = 'https://'
     proxies = json.loads(args['proxies'])
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
         raise Exception('could not read file %s' % CONFIGURATION_FILE)
 
