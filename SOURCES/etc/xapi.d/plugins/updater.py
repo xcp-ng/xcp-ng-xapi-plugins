@@ -108,7 +108,7 @@ def build_repo_list(enabled_repos, additional_repos):
     repos = list(DEFAULT_REPOS)
     if additional_repos:
         repos += [x.strip() for x in additional_repos.split(',')]
-    return [x.id for x in enabled_repos if x.id in repos]
+    return [x for x in enabled_repos if x.id in repos]
 
 def install_helper(session, args, action):
     assert action in ('install', 'update')
@@ -137,7 +137,7 @@ def install_helper(session, args, action):
                 action.capitalize(), packages, host_name, host_uuid
             ), '')
 
-        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(r.id for r in repos), '-y']
         if packages:
             command.append(packages)
         res = run_command(command)
@@ -164,7 +164,7 @@ def check_update(session, args):
     yum_instance.preconf.plugins = True
     repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
     yum_instance.repos.disableRepo('*')
-    yum_instance.repos.enableRepo(','.join(repos))
+    yum_instance.repos.enableRepo(','.join(r.id for r in repos))
     packages = yum_instance.doPackageLists(pkgnarrow='updates')
     del yum_instance.ts
     yum_instance.initActionTs()  # make a new, blank ts to populate
