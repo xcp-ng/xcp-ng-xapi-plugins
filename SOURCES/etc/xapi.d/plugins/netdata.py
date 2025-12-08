@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 # this is a XCP-ng plugin. It goes to /etc/xapi.d/plugins/ with the exec bit set.
