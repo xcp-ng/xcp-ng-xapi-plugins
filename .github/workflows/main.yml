@@ -6,7 +6,7 @@ on:
 
 jobs:
   pytest:
-    runs-on: ubuntu-24.04
+    runs-on: ghcr.io/almalinux/10-base:10.0
     steps:
     - name: checkout
       uses: actions/checkout@v6
