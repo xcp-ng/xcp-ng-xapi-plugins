@@ -61,8 +61,8 @@ def get_netdata_api_key(session, args):
         try:
             with open("/etc/netdata/stream.conf", "r") as conf_file:
                 content = conf_file.readlines()
-                content = map(lambda line: line.split('#')[0].strip(), content)
-                api_key_line = filter(lambda line: line.startswith('api key'), content)
+                content = [line.split('#')[0].strip() for line in content]
+                api_key_line = [line for line in content if line.startswith('api key')]
                 # Python 2&3 compatible code
                 api_key_line = [x for x in api_key_line][0]
                 api_key = api_key_line.split('=')[1].strip()

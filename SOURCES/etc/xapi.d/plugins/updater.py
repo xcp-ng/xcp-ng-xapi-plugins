@@ -187,7 +187,7 @@ def query_installed(session, args):
 
     import re
     packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
-    packages = filter(lambda package: package, packages)
+    packages = [package for package in packages if package]
     if not packages:
         return '{}'
 
