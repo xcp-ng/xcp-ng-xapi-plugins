@@ -347,6 +347,7 @@ Add, delete rules and dump openflow rules.
 
 Parameters for adding a rule:
 - *bridge* :  The name of the bridge to add rule to.
+- *cookie* (optional) : Hexdecimal number used to track the rule (in form `0x1234`). Sets to `0x0` by default.
 - *priority* (optional): A number between 0 and 65535 for the rule priority.
 - *mac* (optional): The MAC address of the VIF to create the rule for, if not
   specified, a network-wide rule will be created.
@@ -363,6 +364,7 @@ Parameters for adding a rule:
 $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
   fn=add-rule                   \
   args:bridge="xenbr0"          \
+  args:cookie="0x1234"          \
   args:priority="100"           \
   args:mac="6e:0b:9e:72:ab:c6"  \
   args:ipRange="192.168.1.0/24" \
@@ -372,10 +374,14 @@ $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
   args:allow="false"
 ```
 
+Please note that if the same rule is added twice but with a different `cookie`,
+the cookie information on th first rule is updated (it follows the OpenvSwitch behaviour).
+
 ##### Delete rule
 
 Parameters for removing a rule:
-- *bridge* :  The name of the bridge to delete the rule from.
+- *bridge* : The name of the bridge to delete the rule from.
+- *cookie* (optional) : if used, the others parameters are ignored and only the cookie information is used to delete the rule.
 - *mac* (optional): The MAC address of the VIF to delete the rule for.
 - *ipRange*: An IP or range of IPs in CIDR notation, for example `192.168.1.0/24`.
 - *direction*: can be **from**, **to** or **from/to**
@@ -389,6 +395,7 @@ Parameters for removing a rule:
 $ xe host-call-plugin host-uuid<uuid> plugin=sdncontroller.py \
   fn=del-rule                   \
   args:bridge="xenbr0"          \
+  args:cookie="0x1234"          \
   args:mac="6e:0b:9e:72:ab:c6"  \
   args:ipRange="192.168.1.0/24" \
   args:direction="from/to"      \

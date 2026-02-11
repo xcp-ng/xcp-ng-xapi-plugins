@@ -370,3 +370,49 @@ PRIORITY_PARAMS = [
     },
 ]
 PRIORITY_IDS = ["100", "0", "65535", "65536", "aoeui", "empty string", "no parameters"]
+
+
+COOKIE_PARAMS = [
+    {"input": {"cookie": "0x0"}, "result": "0x0", "exception": None},
+    {"input": {"cookie": "0x01234"}, "result": "0x1234", "exception": None},
+    {"input": {"cookie": "0xe4e59f746a3ce3db"}, "result": "0xe4e59f746a3ce3db", "exception": None},
+    {"input": {"cookie": "0xFFFFffffFFFFffff"}, "result": "0xffffffffffffffff", "exception": None},
+    {"input": {}, "result": "0x0", "exception": None},
+    {
+        "input": {"cookie": "0x"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'0x' is not a valid cookie",
+        },
+    },
+    {
+        "input": {"cookie": "1234"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'1234' is not a valid cookie",
+        },
+    },
+    {
+        "input": {"cookie": "0xAZ"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'0xAZ' is not a valid cookie",
+        },
+    },
+]
+COOKIE_IDS = [
+    "0x0",
+    "0x01234",
+    "0xe4e59f746a3ce3db",
+    "0xFFFFffffFFFFffff",
+    "no parameter",
+    "0x",
+    "1234",
+    "0xAZ",
+]
