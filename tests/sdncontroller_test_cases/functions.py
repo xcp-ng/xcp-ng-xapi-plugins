@@ -39,7 +39,7 @@ UPDATE_ARGS_PARAMS = [
                 "stderr": "",
             },  # list-interfaces
         ],
-        "ofports": [2, 6],
+        "ofports": ["local", 2, 6],
         "uplinks": [1],
     },
     {  # with vlan
@@ -61,7 +61,7 @@ UPDATE_ARGS_PARAMS = [
                 "stderr": "",
             },  # list-interfaces
         ],
-        "ofports": [5],
+        "ofports": ["local", 5],
         "uplinks": [1],
     },
     {  # invalid bridge
@@ -192,6 +192,7 @@ ADD_RULE_PARAMS = [
             },  # list-interfaces
         ],
         "calls": [
+            call("add-flow", "xenbr0", "ip,cookie=0x0,in_port=local,nw_dst=1.1.1.1,actions=drop"),
             call("add-flow", "xenbr0", "ip,cookie=0x0,in_port=5,nw_dst=1.1.1.1,actions=drop"),
         ],
     },
@@ -221,8 +222,13 @@ ADD_RULE_PARAMS = [
             call(
                 "add-flow",
                 "xenbr0",
+                "tcp,cookie=0x0,in_port=local,nw_dst=1.1.1.1/24,tp_dst=4242,actions=normal",
+            ),
+            call(
+                "add-flow",
+                "xenbr0",
                 "tcp,cookie=0x0,in_port=5,nw_dst=1.1.1.1/24,tp_dst=4242,actions=normal",
-            )
+            ),
         ],
     },
     {  # udp port from vif drop
@@ -283,7 +289,7 @@ ADD_RULE_PARAMS = [
             "type": XenAPIPlugin.Failure,
             "code": "3",
             "text": "Error running ovs-ofctl command: ['ovs-ofctl', '-O', 'OpenFlow11', 'add-flow', 'xenbr0', "
-            "'ip,cookie=0x0,in_port=5,nw_dst=1.1.1.1/24,actions=drop']: fake error",
+            "'ip,cookie=0x0,in_port=local,nw_dst=1.1.1.1/24,actions=drop']: fake error",
         },
         "cmd": [
             {"returncode": 0, "stdout": "xenbr0", "stderr": ""},  # br-to-parent
@@ -341,6 +347,7 @@ DEL_RULE_PARAMS = [
             },  # list-interfaces
         ],
         "calls": [
+            call("del-flows", "xenbr0", "ip,cookie=0x0/-1,in_port=local,nw_dst=1.1.1.1"),
             call("del-flows", "xenbr0", "ip,cookie=0x0/-1,in_port=5,nw_dst=1.1.1.1"),
         ],
     },
@@ -370,8 +377,13 @@ DEL_RULE_PARAMS = [
             call(
                 "del-flows",
                 "xenbr0",
+                "tcp,cookie=0x0/-1,in_port=local,nw_dst=1.1.1.1/24,tp_dst=4242",
+            ),
+            call(
+                "del-flows",
+                "xenbr0",
                 "tcp,cookie=0x0/-1,in_port=5,nw_dst=1.1.1.1/24,tp_dst=4242",
-            )
+            ),
         ],
     },
     {  # udp port from vif drop
@@ -432,7 +444,7 @@ DEL_RULE_PARAMS = [
             "type": XenAPIPlugin.Failure,
             "code": "3",
             "text": "Error running ovs-ofctl command: ['ovs-ofctl', '-O', 'OpenFlow11', 'del-flows', 'xenbr0', "
-            "'ip,cookie=0x0/-1,in_port=5,nw_dst=1.1.1.1/24']: fake error",
+            "'ip,cookie=0x0/-1,in_port=local,nw_dst=1.1.1.1/24']: fake error",
         },
         "cmd": [
             {"returncode": 0, "stdout": "xenbr0", "stderr": ""},  # br-to-parent

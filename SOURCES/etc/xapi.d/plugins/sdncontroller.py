@@ -263,7 +263,7 @@ def update_args_from_ovs(args):
     # get the list of all interfaces, filter with what we found previously and get their ofports number
     if_j = json.loads(run_vsctl_cmd(["--format=json", "list", "interface"]))
     ifs = [dict(zip(if_j["headings"], row)) for row in if_j["data"]]
-    ofports = []
+    ofports = ["local"]
     for interface in ifs:
         # port 65534 is the internal port for the bridge, we don't want to use it
         if interface["_uuid"] in interfaces and interface["ofport"] != 65534:
