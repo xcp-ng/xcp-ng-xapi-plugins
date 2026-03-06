@@ -4,6 +4,7 @@ import sys
 
 import mocked_configparser
 import mocked_xen_api_plugin
+import mocked_xcp
 import mocked_yum
 
 def pytest_configure():
@@ -17,6 +18,9 @@ sys.modules['ConfigParser'] = mocked_configparser
 
 # Mock yum globally, module is not necessarily present on the system.
 sys.modules['yum'] = mocked_yum
+
+# Not installed.
+sys.modules['xcp'] = mocked_xcp
 
 sys.path.append(str(pathlib.Path(__file__).parent.resolve()) + '/../SOURCES/etc/xapi.d/plugins')
 
