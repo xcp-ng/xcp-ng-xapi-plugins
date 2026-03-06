@@ -152,7 +152,7 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=lsblk.py fn=list_block_devices
 
 ## Smartctl parser
 
-This XAPI plugin provides information and health details for the physical disks on the host. 
+This XAPI plugin provides information and health details for the physical disks on the host.
 
 It uses the `smartctl --scan` command to retrieve the list of devices. For devices managed by
 MegaRAID, the device names may be identical. To handle this, the plugin returns information
@@ -440,6 +440,19 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py args:bridge=xenbr
   "stderr": "ovs-ofctl: xenbr10 is not a bridge or a socket\n",
   "stdout": ""
 }
+```
+
+## VM disk space
+
+A XAPI plugin that queries the in-VM status of mounted volumes and their free space.
+
+### `vm_get_disk_space`
+
+Query the mounted volumes of VMs with the specified UUIDs (comma-separated).
+
+```
+$ xe host-call-plugin host-uuid=<uuid> plugin=vm_disk_space.py fn=vm_get_disk_space args:vm_uuids=<vm1>,<vm2>
+{"<vm1>": [{"driveletter": "C:", "filesystem": "NTFS", "name": "\\\\?\\Volume{5989a8d9-8809-410e-b9ea-1246b17ce272}\\", "volume_name": "", "free": 16663056384, "size": 33685499904, "extents": [{"": "xvda", "diskid": 0, "length": 33685504000, "offset": 122683392, "target": 0}], "mount_points": ["C:\\"]}, {"driveletter": "", "filesystem": "NTFS", "name": "\\\\?\\Volume{4cbc9991-9ed1-4527-a3a4-29d1b6d451c2}\\", "volume_name": "", "free": 89468928, "size": 549449728, "extents": [{"": "xvda", "diskid": 0, "length": 549453824, "offset": 33808187392, "target": 0}]}, {"driveletter": "", "filesystem": "FAT32", "name": "\\\\?\\Volume{8d79687c-caff-4b4f-beb4-31038b6468c2}\\", "volume_name": "", "free": 71124992, "size": 100663296, "extents": [{"": "xvda", "diskid": 0, "length": 104857600, "offset": 1048576, "target": 0}]}, {"driveletter": "D:", "filesystem": "", "name": "\\\\?\\Volume{12050cbd-7c8f-11ef-8f8d-806e6f6e6963}\\", "volume_name": "", "free": 0, "size": 0, "extents": [{"": "xvdd", "target": 3}], "mount_points": ["D:\\"]}], "<vm2>": [{"driveletter": null, "filesystem": null, "name": "/dev/xvda1", "volume_name": null, "free": 2005835776, "size": 1048576, "extents": [{"": "xvda"}]}, {"driveletter": null, "filesystem": "ext4", "name": "/dev/xvda2(8f6d7cd7-4435-4f3a-9811-ba9c957a45b4)", "volume_name": null, "free": 17410891776, "size": 26841431552, "extents": [{"": "xvda"}], "mount_points": ["/"]}]}
 ```
 
 ## Tests
