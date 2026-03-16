@@ -451,9 +451,11 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py args:bridge=xenbr
 
 ## Tests
 
-To run the plugins' unit tests you'll need to install `pytest`, `pyfakefs` and `mock`.
-
-To run all tests you can run:
-```py
-pytest tests/
+Install the test dependencies:
+```bash
+pip install --group test
+```
+and run the tests:
+```bash
+pytest
 ```
