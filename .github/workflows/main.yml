@@ -4,7 +4,7 @@ on: [push]
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    runs-on: ghcr.io/almalinux/10-base:10.0
     steps:
     - uses: actions/checkout@v2
     - name: Set up Python
