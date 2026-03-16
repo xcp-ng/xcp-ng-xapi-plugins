@@ -161,6 +161,24 @@ class Parser:
                 E_PARSER, "'{}' is not a valid priority".format(priority)
             )
 
+    def parse_cookie(self):
+        COOKIE_REGEX = re.compile(
+            r"^0x0*([0-9a-fA-F]{1,16})$"
+        )
+
+        cookie = self.args.get("cookie")
+        if cookie is None:
+            return "0x0"
+
+        m = COOKIE_REGEX.match(cookie)
+        if m is None:
+            log_and_raise_error(
+                E_PARSER, "'{}' is not a valid cookie".format(cookie)
+            )
+
+        # normalize output (0x01Ff2 => 0x1ff2)
+        return "0x{}".format(m.group(1).lower())
+
     def read(self, key, parse_fn, dests=None):
         # parse_fn can return a single value or a tuple of values.
         # In this case we are expecting dests to match the expected
@@ -303,6 +321,7 @@ def build_rule_string(direction, ofport, args, uplink=False):
     rule_parts = {
         "priority": ("priority", "priority"),
         "protocol": (None, None),
+        "cookie": ("cookie", "cookie"),
         "ofport": ("in_port", "in_port"),
         "mac": ("dl_src", "dl_dst"),
         "iprange": ("nw_dst", "nw_src"),
@@ -318,6 +337,7 @@ def build_rule_string(direction, ofport, args, uplink=False):
     if args.get("priority"):
         rule += "priority={}".format(args["priority"]) + ","
     rule += args["protocol"]
+    rule += ",cookie={}".format(args["cookie"])
     if uplink:
         rule += ",dl_vlan={}".format(vlanid)
     if ofport:
@@ -342,6 +362,7 @@ def run_ofctl_cmd(cmd, bridge, rule):
             % (format(ofctl_cmd), cmd["stderr"]),
         )
     _LOGGER.info("Applied rule: {}".format(ofctl_cmd))
+    return cmd["stdout"]
 
 
 @error_wrapped
@@ -358,6 +379,7 @@ def add_rule(_session, args):
         parser.read("port", parser.parse_port)
         parser.read("allow", parser.parse_allow)
         parser.read("priority", parser.parse_priority)
+        parser.read("cookie", parser.parse_cookie)
     except XenAPIPlugin.Failure as e:
         log_and_raise_error(
             E_PARSER, "add_rule: Failed to get parameters: {}".format(e.params[1])
@@ -381,6 +403,14 @@ def add_rule(_session, args):
     if rule_args["ofports"] is None:
         log_and_raise_error(
             E_PORTS, "No ports found for bridge: {}".format(rule_args["bridge"])
+        )
+
+    # cleanup the cookie (if already used) to 'upgrade' the rule
+    if rule_args["cookie"] != "0x0":
+        run_ofctl_cmd(
+            "del-flows",
+            rule_args["parent-bridge"],
+            "cookie={}/-1".format(rule_args["cookie"]),
         )
 
     # We can now build the open flow rule
@@ -408,6 +438,7 @@ def del_rule(_session, args):
         parser.read("protocol", parser.parse_protocol)
         parser.read("iprange", parser.parse_iprange)
         parser.read("port", parser.parse_port)
+        parser.read("cookie", parser.parse_cookie)
     except XenAPIPlugin.Failure as e:
         log_and_raise_error(
             E_PARSER, "del_rule: Failed to get parameters: {}".format(e.params[1])
@@ -427,12 +458,22 @@ def del_rule(_session, args):
             E_PARAMS, "del_rule: No port provided, tcp and udp requires one"
         )
 
+    # to match on a cookie, need to specify a mask
+    rule_args["cookie"] = "{}/-1".format(rule_args["cookie"])
+
     update_args_from_ovs(rule_args)
 
-    # We can now build the open flow rule
-    rules = build_rules_strings(rule_args)
-    _LOGGER.info("Built rules: {}".format(rules))
+    if rule_args["cookie"] == "0x0/-1":
+        # if no cookie, build the open flow rule
+        rules = build_rules_strings(rule_args)
 
+    else:
+        # if cookie value is meaningful, use it to remove all related rules
+        rules = [
+            "cookie={}".format(rule_args["cookie"]),
+        ]
+
+    _LOGGER.info("Built rules: {}".format(rules))
     for rule in rules:
         run_ofctl_cmd("del-flows", rule_args["parent-bridge"], rule)
 

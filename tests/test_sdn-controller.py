@@ -21,6 +21,8 @@ from sdncontroller_test_cases.parser import (
     ALLOW_IDS,
     PRIORITY_PARAMS,
     PRIORITY_IDS,
+    COOKIE_PARAMS,
+    COOKIE_IDS,
 )
 
 from sdncontroller_test_cases.functions import (
@@ -112,6 +114,13 @@ class TestSdnControllerParser:
         p = Parser(priority["input"])
         parser_test(p.parse_priority, priority)
 
+    @pytest.fixture(params=COOKIE_PARAMS, ids=COOKIE_IDS)
+    def cookie(self, request):
+        return request.param
+
+    def test_parse_cookie(self, cookie):
+        p = Parser(cookie["input"])
+        parser_test(p.parse_cookie, cookie)
 
 @mock.patch("sdncontroller.run_command", autospec=True)
 class TestSdnControllerFunctions:
