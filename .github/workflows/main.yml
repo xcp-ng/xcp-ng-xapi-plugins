@@ -1,20 +1,31 @@
 name: Run unit tests
 
-on: [push]
+on:
+  push:
+  pull_request:
 
 jobs:
   pytest:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
+    - name: checkout
+      uses: actions/checkout@v6
+
     - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install dependencies
+      uses: LizardByte/actions/actions/setup_python@v2026.227.200013
+      with:
+        python-version: |
+          '3.6.15'
+          '3.12.13'
+
+    - name: Make XCP-ng python versions globally available 
       run: |
-        python -m pip install --upgrade pip
-        pip install mock pytest pyfakefs
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: pytest
-      run: |
-        cd tests
-        pytest
+        sudo ln -s $(pyenv root)/versions/3.6.15/bin/python3.6 /usr/bin/
+      # The following line is not needed as long as ubuntu 24.04 is used
+      # sudo ln -s $(pyenv root)/versions/3.12.13/bin/python3.12 /usr/bin/
+
+    - name: Install Environment manager
+      run: pip install wox
+
+    - name: Run unit tests
+      run: wox

@@ -1,0 +1,34 @@
+[build-system]
+requires = ["setuptools >= 75.3.4"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "xcp-ng-xapi-plugins"
+version = "1.16.0"
+requires-python = ">=3.6"
+authors = [{name = "XCP-ng maintainers"}]
+maintainers = [{name = "XCP-ng maintainers"}]
+description = "Plugins for xen-api installed in XCP-ng"
+readme = "README.md"
+license = "AGPL-3.0-only"
+license-files = ["LICENSE"]
+
+[project.urls]
+Homepage = "https://xcp-ng.org/"
+Repository = "https://github.com/xcp-ng/xcp-ng-xapi-plugins.git"
+Issues = "https://github.com/xcp-ng/xcp-ng-xapi-plugins/issues"
+
+[dependency-groups]
+test = ["pytest", "pyfakefs", "mock"]
+
+[pytest]
+testpaths = "tests"
+
+# Normal tooling doesn't support python 3.6, use Wox to set it up
+# XCP-ng 8.3 uses Python 3.6, XCP-ng 9.0 uses Python 3.12
+[tool.wox.showcase]
+envlist = ["py36", "py312"]
+deps = ["pytest", "pyfakefs", "mock"]
+commands = ["pytest"]
+
+[tool.wox.wox_configuration]
