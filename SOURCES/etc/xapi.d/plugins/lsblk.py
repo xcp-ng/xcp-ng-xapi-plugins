@@ -9,6 +9,10 @@ import XenAPIPlugin
 from xcpngutils import run_command, error_wrapped
 
 LSBLK_COLUMNS = "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"
+# Filtering disk/by-{something}/ results
+# Possible values include: id, uuid, partuuid, label, path, scsibus, scsid
+# Example "id|label|part"
+DISKBY = "id"
 
 def _run(cmd):
     """Small helper to run a [cmd, ...] and get its decoded and stripped output."""
@@ -18,7 +22,7 @@ def udev_export_db():
     """Check udev database to extract a dict of {device_name: [list, of, symlinks], ...}."""
     return {
         re.search(r'N: (.*)', device).group(1):
-        sorted("/dev/" + path for path in re.findall(r'S: (disk/.*)', device))
+        sorted("/dev/" + path for path in re.findall(r'S: (disk/by-(?:{})/.*)'.format(DISKBY), device))
         for device in _run(["udevadm", "info", "--export-db"]).split("\n\n")
         if "S: disk/" in device and "N: " in device
     }
