@@ -1,0 +1,4 @@
+* @xcp-ng-rpms/xapi-network
+SOURCES/etc/xapi.d/plugins/lvm.py @xcp-ng-rpms/storage
+SOURCES/etc/xapi.d/plugins/sdncontroller.py @xcp-ng-rpms/xapi-network
+SOURCES/etc/xapi.d/plugins/updater.py @xcp-ng-rpms/os-platform-release
