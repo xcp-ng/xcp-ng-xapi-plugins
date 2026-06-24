@@ -492,7 +492,9 @@ def dump_flows(_session, args):
             E_PARSER, "dump_flows: Failed to get parameters: {}".format(e.params[1])
         )
 
-    ofctl_cmd = [OVS_OFCTL_CMD, "-O", OPENFLOW_PROTOCOL, "dump-flows", bridge]
+    pbridge = run_vsctl_cmd(["br-to-parent", bridge]).rstrip()
+
+    ofctl_cmd = [OVS_OFCTL_CMD, "-O", OPENFLOW_PROTOCOL, "dump-flows", pbridge]
     cmd = run_command(ofctl_cmd, check=False)
     if cmd["returncode"]:
         log_and_raise_error(
