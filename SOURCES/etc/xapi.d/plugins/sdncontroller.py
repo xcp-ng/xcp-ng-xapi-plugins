@@ -236,6 +236,8 @@ def run_vsctl_cmd(args):
 def update_args_from_ovs(args):
     # get parent bridge to apply rules to
     args["parent-bridge"] = run_vsctl_cmd(["br-to-parent", args["bridge"]]).rstrip()
+    args["ofports"] = []
+    args["uplinks"] = []
 
     # get ports names for our actual bridge, be it fake (vlan) or real (no vlan)
     ifs_in_bridge = run_vsctl_cmd(["list-ports", args["bridge"]]).split()
@@ -263,17 +265,15 @@ def update_args_from_ovs(args):
     # get the list of all interfaces, filter with what we found previously and get their ofports number
     if_j = json.loads(run_vsctl_cmd(["--format=json", "list", "interface"]))
     ifs = [dict(zip(if_j["headings"], row)) for row in if_j["data"]]
-    ofports = []
     for interface in ifs:
         # port 65534 is the internal port for the bridge, we don't want to use it
         if interface["_uuid"] in interfaces and interface["ofport"] != 65534:
-            ofports.append(interface["ofport"])
+            args["ofports"].append(interface["ofport"])
 
     # second pass on interfaces, find uplinks ofports, that can be:
     # - physical port ethX
     # - physical ports ethX and Y of a bond
     # - the port of a tunnel
-    uplinks = []
     for interface in ifs:
         if interface["_uuid"] not in parent_ifaces:
             continue
@@ -286,12 +286,9 @@ def update_args_from_ovs(args):
             or interface["type"] == "gre"
             or interface["type"] == "vxlan"
         ):
-            uplinks.append(interface["ofport"])
-            if interface["ofport"] in ofports:
-                ofports.remove(interface["ofport"])
-
-    args["uplinks"] = uplinks
-    args["ofports"] = ofports
+            args["uplinks"].append(interface["ofport"])
+            if interface["ofport"] in args["ofports"]:
+                args["ofports"].remove(interface["ofport"])
 
 
 def build_rules_strings(args):
