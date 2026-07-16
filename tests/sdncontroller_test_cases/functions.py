@@ -493,7 +493,7 @@ DUMP_FLOWS_PARAMS = [
         "exception": {
             "type": XenAPIPlugin.Failure,
             "code": "3",
-            "text": "Error dumping flows: ['ovs-ofctl', '-O', 'OpenFlow11', 'dump-flows', 'xapi42']: "
+            "text": "Error running ovs-vsctl command: ['ovs-vsctl', 'br-to-parent', 'xapi42']: "
             "ovs-ofctl: xapi42 is not a bridge or a socket\n",
         },
         "cmd": {
