@@ -15,11 +15,13 @@ jobs:
       uses: LizardByte/actions/actions/setup_python@v2026.227.200013
       with:
         python-version: |
+          '2.7.5'
           '3.6.15'
           '3.12.13'
 
-    - name: Make XCP-ng python versions globally available 
+    - name: Make XCP-ng python versions globally available
       run: |
+        sudo ln -s $(pyenv root)/versions/2.7.5/bin/python2.7 /usr/bin/
         sudo ln -s $(pyenv root)/versions/3.6.15/bin/python3.6 /usr/bin/
       # The following line is not needed as long as ubuntu 24.04 is used
       # sudo ln -s $(pyenv root)/versions/3.12.13/bin/python3.12 /usr/bin/

@@ -27,7 +27,7 @@ testpaths = "tests"
 # Normal tooling doesn't support python 3.6, use Wox to set it up
 # XCP-ng 8.3 uses Python 3.6, XCP-ng 9.0 uses Python 3.12
 [tool.wox.showcase]
-envlist = ["py36", "py312"]
+envlist = ["py27", "py36", "py312"]
 deps = ["pytest", "pyfakefs", "mock"]
 commands = ["pytest"]
 
