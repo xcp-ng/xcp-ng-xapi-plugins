@@ -40,7 +40,7 @@ class Parser:
         self.errors = []
 
     def parse_bridge(self):
-        BRIDGE_REGEX = re.compile(r"\b\w+\d+\b")
+        BRIDGE_REGEX = re.compile(r"^\w+\d+\Z")
         bridge = self.args.get("bridge")
 
         if bridge is None:
@@ -54,7 +54,7 @@ class Parser:
         return bridge
 
     def parse_mac(self):
-        MAC_REGEX = re.compile(r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})$")
+        MAC_REGEX = re.compile(r"^([0-9A-Fa-f]{2}:){5}([0-9A-Fa-f]{2})\Z")
         mac_addr = self.args.get("mac")
 
         if mac_addr is None:
@@ -71,7 +71,7 @@ class Parser:
     def parse_iprange(self):
         IPRANGE_REGEX = re.compile(
             r"^((25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}"
-            r"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/\d{1,2})?$"
+            r"(25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)(/\d{1,2})?\Z"
         )
         ip_range = self.args.get("ipRange")
 
@@ -118,11 +118,15 @@ class Parser:
         return protocol
 
     def parse_port(self):
+        PORT_REGEX = re.compile(r"^\d+\Z")
+
         port = self.args.get("port")
         if port is None:
             return None
 
         try:
+            if PORT_REGEX.match(port) is None:
+                raise ValueError
             p = int(port)
             if not (0 <= p <= 65535):
                 raise ValueError
@@ -147,11 +151,15 @@ class Parser:
         return False
 
     def parse_priority(self):
+        PRIORITY_REGEX = re.compile(r"^\d+\Z")
+
         priority = self.args.get("priority")
         if priority is None:
             return None
 
         try:
+            if PRIORITY_REGEX.match(priority) is None:
+                raise ValueError
             p = int(priority)
             if not (0 <= p <= 65535):
                 raise ValueError
@@ -163,7 +171,7 @@ class Parser:
 
     def parse_cookie(self):
         COOKIE_REGEX = re.compile(
-            r"^0x0*([0-9a-fA-F]{1,16})$"
+            r"^0x0*([0-9a-fA-F]{1,16})\Z"
         )
 
         cookie = self.args.get("cookie")
