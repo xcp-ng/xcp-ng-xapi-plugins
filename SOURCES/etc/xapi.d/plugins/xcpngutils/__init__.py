@@ -13,6 +13,10 @@ import XenAPIPlugin
 from contextlib import contextmanager
 from functools import wraps
 
+class NoNewlineFormatter(logging.Formatter):
+    def format(self, record):
+        formatted = super(NoNewlineFormatter, self).format(record)
+        return formatted.replace("\n", "\\n").replace("\r", "\\r")
 
 def configure_logging(name):
     log_file = "/var/log/" + name + "-plugin.log"
@@ -37,7 +41,7 @@ def configure_logging(name):
         for line in problem:
             logger.error(line)
 
-    formatter = logging.Formatter(
+    formatter = NoNewlineFormatter(
         '%(asctime)s - [%(process)d] - %(levelname)s - %(message)s',
         '%Y-%m-%d %H:%M:%S')
 
