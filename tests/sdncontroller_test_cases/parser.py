@@ -34,6 +34,15 @@ BRIDGE_PARAMS = [
         },
     },
     {
+        "input": {"bridge": "xapi1\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'xapi1\n' is not a valid bridge name",
+        },
+    },
+    {
         "input": {},
         "result": None,
         "exception": {
@@ -49,6 +58,7 @@ BRIDGE_IDS = [
     "empty string",
     "no number",
     "with space",
+    "trailing newline",
     "no parameters",
 ]
 
@@ -74,6 +84,15 @@ MAC_PARAMS = [
         },
     },
     {
+        "input": {"mac": "72:7a:c0:ae:1b:a5\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'72:7a:c0:ae:1b:a5\n' is not a valid MAC",
+        },
+    },
+    {
         "input": {"mac": ""},
         "result": None,
         "exception": {
@@ -84,7 +103,14 @@ MAC_PARAMS = [
     },
     {"input": {}, "result": None, "exception": None},
 ]
-MAC_IDS = ["mac", "MAC", "non hexa mac", "empty mac", "no parameters"]
+MAC_IDS = [
+    "mac",
+    "MAC",
+    "non hexa mac",
+    "empty mac",
+    "trailing newline",
+    "no parameters",
+]
 
 
 IPRANGE_PARAMS = [
@@ -109,6 +135,15 @@ IPRANGE_PARAMS = [
         },
     },
     {
+        "input": {"ipRange": "1.1.1.1\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'1.1.1.1\n' is not a valid IP range",
+        },
+    },
+    {
         "input": {},
         "result": None,
         "exception": {
@@ -118,7 +153,14 @@ IPRANGE_PARAMS = [
         },
     },
 ]
-IPRANGE_IDS = ["ip addr", "ip subnet", "invalid ip", "empty ip", "no parameters"]
+IPRANGE_IDS = [
+    "ip addr",
+    "ip subnet",
+    "invalid ip",
+    "empty ip",
+    "trailing newline",
+    "no parameters",
+]
 
 
 DIRECTION_PARAMS = [
@@ -149,6 +191,15 @@ DIRECTION_PARAMS = [
         },
     },
     {
+        "input": {"direction": "to\n"},
+        "result": (None, None),
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'to\n' is not a valid direction",
+        },
+    },
+    {
         "input": {},
         "result": (None, None),
         "exception": {
@@ -170,6 +221,7 @@ DIRECTION_IDS = [
     "from/to",
     "empty direction",
     "invalid direction",
+    "trailing newline",
     "no parameters",
 ]
 
@@ -204,6 +256,15 @@ PROTOCOL_PARAMS = [
         },
     },
     {
+        "input": {"protocol": "ip\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'ip\n' is not a supported protocol",
+        },
+    },
+    {
         "input": {},
         "result": None,
         "exception": {
@@ -226,6 +287,7 @@ PROTOCOL_IDS = [
     "ICMP",
     "empty string",
     "invalid protocol",
+    "trailing newline",
     "no parameters",
 ]
 
@@ -270,6 +332,15 @@ PORT_PARAMS = [
             "text": "'' is not a valid port",
         },
     },
+    {
+        "input": {"port": "4242\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'4242\n' is not a valid port",
+        },
+    },
     {"input": {}, "result": None, "exception": None},
 ]
 PORT_IDS = [
@@ -280,6 +351,7 @@ PORT_IDS = [
     "92142",
     "string",
     "empty string",
+    "trailing newline",
     "no parameters",
 ]
 
@@ -310,6 +382,15 @@ ALLOW_PARAMS = [
         },
     },
     {
+        "input": {"allow": "true\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "allow parameter should be true or false, not 'true\n'",
+        },
+    },
+    {
         "input": {},
         "result": None,
         "exception": {
@@ -328,6 +409,7 @@ ALLOW_IDS = [
     "FALSE",
     "bar",
     "empty string",
+    "trailing newline",
     "no parameters",
 ]
 
@@ -364,12 +446,30 @@ PRIORITY_PARAMS = [
         },
     },
     {
+        "input": {"priority": "1\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'1\n' is not a valid priority",
+        },
+    },
+    {
         "input": {},
         "result": None,
         "exception": None,
     },
 ]
-PRIORITY_IDS = ["100", "0", "65535", "65536", "aoeui", "empty string", "no parameters"]
+PRIORITY_IDS = [
+    "100",
+    "0",
+    "65535",
+    "65536",
+    "aoeui",
+    "empty string",
+    "trailing newline",
+    "no parameters",
+]
 
 
 COOKIE_PARAMS = [
@@ -405,6 +505,15 @@ COOKIE_PARAMS = [
             "text": "'0xAZ' is not a valid cookie",
         },
     },
+    {
+        "input": {"cookie": "0x1234\n"},
+        "result": None,
+        "exception": {
+            "type": XenAPIPlugin.Failure,
+            "code": "1",
+            "text": "'0x1234\n' is not a valid cookie",
+        },
+    },
 ]
 COOKIE_IDS = [
     "0x0",
@@ -415,4 +524,5 @@ COOKIE_IDS = [
     "0x",
     "1234",
     "0xAZ",
+    "trailing newline",
 ]
