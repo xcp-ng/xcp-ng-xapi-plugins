@@ -3,11 +3,36 @@
 
 import errno
 import json
+import re
 import sys
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped, strtobool, raise_plugin_error
+from xcpngutils import (
+    configure_logging,
+    run_command,
+    error_wrapped,
+    strtobool,
+    raise_plugin_error,
+    validate_arg,
+)
+
+# Valid characters for VG and LV names are: a-z A-Z 0-9 + _ . -
+# Names must not start with '-' to avoid CLI flag injection.
+LVM_NAME_PATTERN = re.compile(r'^[a-zA-Z0-9+_.][a-zA-Z0-9+_.-]*\Z')
+# Paths under /dev/ only, e.g. /dev/sdb or /dev/disk/by-path/pci-0000:00:1f.2-ata-1.
+BLOCK_DEVICE_PATTERN = re.compile(r'^/dev/(?:[a-zA-Z0-9_+:.-]+/)*[a-zA-Z0-9_+:.-]+\Z')
+
+def parse_block_devices(devices_str):
+    devices = [d.strip() for d in (devices_str or '').split(',') if d.strip()]
+    if not devices:
+        raise ValueError('Missing or empty argument `devices`')
+    for device in devices:
+        validate_arg(device, 'block device', pattern=BLOCK_DEVICE_PATTERN)
+        # Forbid '.' and '..' segments to stay under /dev/.
+        if any(part in ('.', '..') for part in device.split('/')):
+            raise ValueError("'{}' is not a valid block device".format(device))
+    return devices
 
 def raise_lvm_error(code, stderr):
     raise_plugin_error('LVM_ERROR({})'.format(code), stderr)
@@ -49,7 +74,7 @@ def list_physical_volumes(session, args):
 
 @error_wrapped
 def list_volume_groups(session, args):
-    vg_name = args.get('vg_name')
+    vg_name = validate_arg(args.get('vg_name'), 'vg_name', pattern=LVM_NAME_PATTERN, optional=True)
     command = ['vgs', '--noheadings', '--units', 'B', '--nosuffix']
     if vg_name:
         command.append(vg_name)
@@ -91,11 +116,10 @@ def list_volume_groups(session, args):
 
 @error_wrapped
 def list_logical_volumes(session, args):
-    vg_name = args.get('vg_name')
+    vg_name = validate_arg(args.get('vg_name'), 'vg_name', pattern=LVM_NAME_PATTERN, optional=True)
 
     # Use a separator because few fields like "Pool" can be empty.
-    # Note: The valid characters for VG and LV names are: a-z A-Z 0-9 + _ . -
-    # So we use another char.
+    # ':' is safe: not a valid VG/LV name character.
     columns = ['-olv_name,vg_name,lv_attr,lv_size,pool_lv']
     command = ['lvs', '--noheadings', '--units', 'B', '--nosuffix', '--separator', ':'] + columns
     if vg_name:
@@ -136,7 +160,7 @@ def list_logical_volumes(session, args):
 
 @error_wrapped
 def create_physical_volume(session, args):
-    devices = args['devices'].split(',')
+    devices = parse_block_devices(args.get('devices'))
     ignore_fs = strtobool(args.get('ignore_existing_filesystems'))
     force = strtobool(args.get('force'))
 
@@ -157,8 +181,8 @@ def create_physical_volume(session, args):
 
 @error_wrapped
 def create_volume_group(session, args):
-    vg_name = args['vg_name']
-    devices = args['devices'].split(',')
+    vg_name = validate_arg(args.get('vg_name'), 'vg_name', pattern=LVM_NAME_PATTERN)
+    devices = parse_block_devices(args.get('devices'))
     force = strtobool(args.get('force'))
 
     command = ['vgcreate', vg_name] + devices
@@ -174,7 +198,7 @@ def create_volume_group(session, args):
 
 @error_wrapped
 def destroy_volume_group(session, args):
-    vg_name = args['vg_name']
+    vg_name = validate_arg(args.get('vg_name'), 'vg_name', pattern=LVM_NAME_PATTERN)
     force = strtobool(args.get('force'))
 
     command = ['vgremove', vg_name]
@@ -195,8 +219,8 @@ def destroy_volume_group(session, args):
 
 @error_wrapped
 def create_thin_pool(session, args):
-    vg_name = args['vg_name']
-    lv_name = args['lv_name']
+    vg_name = validate_arg(args.get('vg_name'), 'vg_name', pattern=LVM_NAME_PATTERN)
+    lv_name = validate_arg(args.get('lv_name'), 'lv_name', pattern=LVM_NAME_PATTERN)
 
     command = ['lvcreate', '-l', '100%FREE', '-T', '{}/{}'.format(vg_name, lv_name)]
     result = run_command(command, check=False)

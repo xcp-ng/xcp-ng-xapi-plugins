@@ -120,6 +120,18 @@ def strtobool(str):
     raise ValueError("invalid truth value '{}'".format(str))
 
 
+def validate_arg(value, param, allowed=None, pattern=None, optional=False):
+    if not value:
+        if optional:
+            return None
+        raise ValueError('Missing or empty argument `{}`'.format(param))
+    if allowed is not None and value not in allowed:
+        raise ValueError("'{}' is not a valid {}".format(value, param))
+    if pattern is not None and not pattern.match(value):
+        raise ValueError("'{}' is not a valid {}".format(value, param))
+    return value
+
+
 def raise_plugin_error(code, message, details='', backtrace=''):
     raise XenAPIPlugin.Failure(str(code), [message, details, backtrace])
 

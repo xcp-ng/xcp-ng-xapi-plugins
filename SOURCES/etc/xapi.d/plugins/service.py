@@ -5,16 +5,12 @@ import json
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, run_command, error_wrapped, validate_arg
 
 ALLOWED_SERVICES = {"linstor-controller", "linstor-satellite"}
 
 def run_service_command(cmd_name, args):
-    service = args.get('service')
-    if not service:
-        raise Exception('Missing or empty argument `service`')
-    if service not in ALLOWED_SERVICES:
-        raise ValueError('This service is not whitelisted')
+    service = validate_arg(args.get('service'), 'service', allowed=ALLOWED_SERVICES)
     run_command(['systemctl', cmd_name, service])
     return json.dumps(True)
 
