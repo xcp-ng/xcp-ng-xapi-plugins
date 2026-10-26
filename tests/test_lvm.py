@@ -10,11 +10,25 @@ from lvm import \
     create_physical_volume, \
     create_volume_group, \
     destroy_volume_group, \
-    create_thin_pool
+    create_thin_pool, \
+    parse_block_devices
 
 TESTED_VG_NAME = 'linstor_group'
 TESTED_DEVICES = '/dev/sdb,/dev/sdc'
 TESTED_DEVICE_ARRAY = TESTED_DEVICES.split(',')
+
+def test_parse_block_devices():
+    assert parse_block_devices('/dev/sdb,/dev/sdc') == ['/dev/sdb', '/dev/sdc']
+    assert parse_block_devices(' /dev/nvme0n1 , /dev/mapper/foo ') == ['/dev/nvme0n1', '/dev/mapper/foo']
+    assert parse_block_devices('/dev/disk/by-path/pci-0000:00:1f.2-ata-1,/dev/disk/by-id/nvme-eui.0025') == [
+        '/dev/disk/by-path/pci-0000:00:1f.2-ata-1', '/dev/disk/by-id/nvme-eui.0025'
+    ]
+    for devices in (
+        None, '', ',,,', '-f', '/etc/passwd', 'sdb', '/dev/../etc/passwd', '/dev/./sda',
+        '/dev/disk/..', '/dev/sda;/bin/sh'
+    ):
+        with pytest.raises(ValueError):
+            parse_block_devices(devices)
 
 @mock.patch('lvm.run_command', autospec=True)
 class TestLvmCommands:
@@ -256,3 +270,37 @@ class TestLvmCommands:
         run_command.assert_called_with([
             'lvcreate', '-l', '100%FREE', '-T', '{}/{}'.format(TESTED_VG_NAME, volume_name)
         ], check=False)
+
+    def test_destroy_volume_group_rejects_invalid_vg_name(self, run_command):
+        for vg_name in ('-f', '--help', 'foo/bar', 'vg\n', '', None):
+            run_command.reset_mock()
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                destroy_volume_group(None, {'vg_name': vg_name})
+            assert 'vg_name' in e.value.params[1]
+            run_command.assert_not_called()
+
+    def test_create_physical_volume_rejects_invalid_devices(self, run_command):
+        for devices in (
+            '-f', '/etc/passwd', '', None, ',,,', '/dev/sda;/bin/sh', '/dev/../etc/passwd'
+        ):
+            run_command.reset_mock()
+            with pytest.raises(XenAPIPlugin.Failure):
+                create_physical_volume(None, {'devices': devices})
+            run_command.assert_not_called()
+
+    def test_create_thin_pool_rejects_invalid_lv_name(self, run_command):
+        for lv_name in ('-T', 'pool/name', ''):
+            run_command.reset_mock()
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                create_thin_pool(None, {
+                    'vg_name': TESTED_VG_NAME,
+                    'lv_name': lv_name
+                })
+            assert 'lv_name' in e.value.params[1]
+            run_command.assert_not_called()
+
+    def test_list_volume_groups_rejects_invalid_vg_name(self, run_command):
+        with pytest.raises(XenAPIPlugin.Failure) as e:
+            list_volume_groups(None, {'vg_name': '-f'})
+        assert "'-f' is not a valid vg_name" in e.value.params[1]
+        run_command.assert_not_called()

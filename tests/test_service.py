@@ -41,3 +41,11 @@ class TestService:
 
     def test_try_restart_without_service(self, run_command):
         self._test_command_without_service(try_restart_service)
+
+    def test_rejects_non_whitelisted_service(self, run_command):
+        for service in ('sshd', '-f', 'linstor-controller;rm'):
+            run_command.reset_mock()
+            with pytest.raises(XenAPIPlugin.Failure) as e:
+                start_service(mock.MagicMock(), {'service': service})
+            assert 'is not a valid service' in e.value.params[1]
+            run_command.assert_not_called()
