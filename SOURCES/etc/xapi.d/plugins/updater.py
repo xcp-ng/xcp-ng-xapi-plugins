@@ -1,10 +1,10 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-import ConfigParser
+import configparser
 import json
-import yum
+import dnf
 
 import XenAPIPlugin
 
@@ -97,8 +97,11 @@ def operationlock(*pid_args, **pid_kwargs):
 
 
 def display_package(p):
-    if len(p.changelog):
-        changelog = {'date': p.changelog[0][0], 'author': p.changelog[0][1], 'description': p.changelog[0][2]}
+    if p.changelogs:
+        # only shows last entry, untested
+        changelog = {'date': p.changelogs[0]['timestamp'],
+                     'author': p.changelogs[0]['author'],
+                     'description': p.changelogs[0]['text']}
     else:
         changelog = None
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
@@ -108,7 +111,7 @@ def build_repo_list(enabled_repos, additional_repos):
     repos = list(DEFAULT_REPOS)
     if additional_repos:
         repos += [x.strip() for x in additional_repos.split(',')]
-    return [x.id for x in enabled_repos if x.id in repos]
+    return [x for x in enabled_repos if x.id in repos]
 
 def install_helper(session, args, action):
     assert action in ('install', 'update')
@@ -117,10 +120,9 @@ def install_helper(session, args, action):
     if action == 'install' and not packages:
         raise Exception('Missing or empty argument `packages`')
 
-    yum_instance = yum.YumBase()
-    yum_instance.preconf.debuglevel = 0
-    yum_instance.preconf.plugins = False
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
+    yum_instance = dnf.Base()
+    yum_instance.read_all_repos()
+    repos = build_repo_list(list(yum_instance.repos.iter_enabled()), args.get('repos'))
 
     task = None
     res = None
@@ -137,7 +139,7 @@ def install_helper(session, args, action):
                 action.capitalize(), packages, host_name, host_uuid
             ), '')
 
-        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+        command = ['dnf', action, '--disablerepo=*', '--enablerepo=' + ','.join(r.id for r in repos), '-y']
         if packages:
             command.append(packages)
         res = run_command(command)
@@ -159,20 +161,16 @@ def install(session, args):
 @error_wrapped
 @operationlock()
 def check_update(session, args):
-    yum_instance = yum.YumBase()
-    yum_instance.preconf.debuglevel = 0
-    yum_instance.preconf.plugins = True
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
-    yum_instance.repos.disableRepo('*')
-    yum_instance.repos.enableRepo(','.join(repos))
-    packages = yum_instance.doPackageLists(pkgnarrow='updates')
-    del yum_instance.ts
-    yum_instance.initActionTs()  # make a new, blank ts to populate
-    yum_instance.populateTs(keepold=0)
-    yum_instance.ts.check()  # required for ordering
-    yum_instance.ts.order()
-    # Python 2&3 compatible code
-    return json.dumps(list(map(display_package, packages)))
+    yum_instance = dnf.Base()
+    yum_instance.read_all_repos()
+    repos = build_repo_list(list(yum_instance.repos.iter_enabled()), args.get('repos'))
+    for repo in yum_instance.repos.iter_enabled():
+        repo.disable()
+    for repo in repos:
+        repo.enable()
+    yum_instance.fill_sack()
+    packages = yum_instance.sack.query().available().upgrades()
+    return json.dumps([display_package(p) for p in packages])
 
 @error_wrapped
 @operationlock(timeout=10)
@@ -187,7 +185,7 @@ def query_installed(session, args):
 
     import re
     packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
-    packages = filter(lambda package: package, packages)
+    packages = [package for package in packages if package]
     if not packages:
         return '{}'
 
@@ -239,7 +237,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = configparser.ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
     new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
     return json.dumps(new_dict)
@@ -257,7 +255,7 @@ def set_proxies(session, args):
     special_url_prefix = 'http://HTTPS///'
     https_url_prefix = 'https://'
     proxies = json.loads(args['proxies'])
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
         raise Exception('could not read file %s' % CONFIGURATION_FILE)
 
