@@ -18,17 +18,38 @@ Homepage = "https://xcp-ng.org/"
 Repository = "https://github.com/xcp-ng/xcp-ng-xapi-plugins.git"
 Issues = "https://github.com/xcp-ng/xcp-ng-xapi-plugins/issues"
 
+[tool.uv]
+# This repo is not a distributable python package: the sources are installed
+# by the xcp-ng-xapi-plugins RPM from SOURCES/etc/xapi.d/plugins.
+# uv only manages the test, lint and build toolchains.
+package = false
+
 [dependency-groups]
-test = ["pytest", "pyfakefs", "mock"]
+# Test dependencies, resolved per python version from a single uv.lock:
+# python 3.6 (XCP-ng 8.3) and python 3.12 (XCP-ng 9.0).
+test = [
+    "pytest>=7.0.1",
+    "pyfakefs",
+    "mock",
+]
+# Linters and formatter.
+lint = [
+    "ruff",
+    "flake8",
+    "autopep8",
+    "pydocstyle",
+]
+# Packaging helpers. strip-python3 removes type annotations and downgrades
+# the syntax to python 2.7 compatible code for what is installed on XCP-ng
+# 8.3; it needs to run on python >= 3.9 (broken on newer pythons).
+build = [
+    "strip-python3 ; python_version >= '3.9'",
+]
 
-[pytest]
-testpaths = "tests"
-
-# Normal tooling doesn't support python 3.6, use Wox to set it up
-# XCP-ng 8.3 uses Python 3.6, XCP-ng 9.0 uses Python 3.12
-[tool.wox.showcase]
-envlist = ["py36", "py312"]
-deps = ["pytest", "pyfakefs", "mock"]
-commands = ["pytest"]
-
-[tool.wox.wox_configuration]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra"
+log_cli = true
+log_cli_level = "info"
+log_cli_format = "%(asctime)s %(levelname)s %(message)s"
+log_cli_date_format = "%b %d %H:%M:%S"
