@@ -1,8 +1,10 @@
 from ConfigParser import ConfigParser
+import datetime
 import errno
 import fcntl
 import json
 import mock
+import mocked_dnf
 import pytest
 import time
 import XenAPIPlugin
@@ -28,7 +30,7 @@ class TestInstall:
         packages = 'toto tata titi'
         install(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'install', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+            ['dnf', 'install', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
         )
 
     def test_install_without_packages(self, run_command, fs):
@@ -46,13 +48,32 @@ class TestCheckUpdate:
         res = check_update(None, {})
         assert json.loads(expected) == json.loads(res)
 
-    @mock.patch('updater.yum.YumBase.doPackageLists', autospec=True)
-    def test_check_update_error(self, doPackageLists, fs):
-        doPackageLists.side_effect = Exception('Error!')
+    def test_check_update_changelog(self, fs):
+        package = mocked_dnf.Package()
+        package.changelogs = [
+            {'timestamp': datetime.date(2025, 1, 1), 'author': 'old', 'text': 'old entry'},
+            {'timestamp': datetime.date(2025, 12, 8), 'author': 'Jane <jane@example.com> - 1.0-2', 'text': '- fix'},
+        ]
+        with mock.patch('mocked_dnf.Sack.query', return_value=mocked_dnf.Query([package])):
+            res = json.loads(check_update(None, {}))
+        assert res[0]['changelog'] == {
+            'date': 1765152000, 'author': 'Jane <jane@example.com> - 1.0-2', 'description': '- fix'
+        }
+
+    def test_check_update_repos(self, fs):
+        base = mocked_dnf.Base()
+        with mock.patch('updater.dnf.Base', return_value=base):
+            check_update(None, {'repos': 'totoro'})
+        assert sorted(r.id for r in base.repos.iter_enabled()) == sorted(DEFAULT_REPOS + ('totoro',))
+        assert all(r.load_metadata_other == r.enabled for r in base.repos.values())
+
+    @mock.patch('updater.dnf.Base.fill_sack', autospec=True)
+    def test_check_update_error(self, fill_sack, fs):
+        fill_sack.side_effect = Exception('Error!')
 
         with pytest.raises(XenAPIPlugin.Failure) as e:
             check_update(None, {})
-        doPackageLists.assert_called_once()
+        fill_sack.assert_called_once()
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
 
@@ -63,7 +84,7 @@ class TestUpdate:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_update_with_packages(self, run_command, fs):
@@ -72,7 +93,7 @@ class TestUpdate:
         packages = 'toto tata titi'
         update(mock.MagicMock(), {'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y', packages]
         )
 
     def test_update_error(self, run_command, fs):
@@ -81,7 +102,7 @@ class TestUpdate:
         with pytest.raises(XenAPIPlugin.Failure) as e:
             update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
         assert e.value.params[0] == '-1'
         assert e.value.params[1] == 'Error!'
@@ -92,7 +113,7 @@ class TestUpdate:
         repos = DEFAULT_REPOS + ('totoro', 'lalala')
         update(mock.MagicMock(), {'repos': 'totoro, lalala'})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
         )
 
     def test_update_with_disabled_repo(self, run_command, fs):
@@ -102,7 +123,7 @@ class TestUpdate:
         repos.append('ignored_repo')
         update(mock.MagicMock(), {'repos': 'ignored_repo'})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_update_with_additional_repos_and_packages(self, run_command, fs):
@@ -112,7 +133,7 @@ class TestUpdate:
         packages = 'donald hortense'
         update(mock.MagicMock(), {'repos': 'riri, fifi, loulou', 'packages': packages})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y', packages]
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y', packages]
         )
 
 @mock.patch('updater.run_command', autospec=True)
@@ -310,7 +331,7 @@ class TestNotLockedLockFile:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
     def test_ckeck_update_during_update(self, run_command, fs):
@@ -331,7 +352,7 @@ class TestNotLockedLockFile:
 
         update(mock.MagicMock(), {})
         run_command.assert_called_once_with(
-            ['yum', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
+            ['dnf', 'update', '--disablerepo=*', '--enablerepo=' + ','.join(DEFAULT_REPOS), '-y']
         )
 
 # ==============================================================================

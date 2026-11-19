@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from functools import wraps
+import calendar
 import configparser
 import json
 import dnf
@@ -97,13 +98,13 @@ def operationlock(*pid_args, **pid_kwargs):
 
 
 def display_package(p):
+    changelog = None
     if p.changelogs:
-        # only shows last entry, untested
-        changelog = {'date': p.changelogs[0]['timestamp'],
-                     'author': p.changelogs[0]['author'],
-                     'description': p.changelogs[0]['text']}
-    else:
-        changelog = None
+        last = max(p.changelogs, key=lambda c: c['timestamp'])
+        # dnf gives a datetime.date, yum gave an epoch timestamp: keep the latter
+        changelog = {'date': calendar.timegm(last['timestamp'].timetuple()),
+                     'author': last['author'],
+                     'description': last['text']}
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
@@ -113,6 +114,14 @@ def build_repo_list(enabled_repos, additional_repos):
         repos += [x.strip() for x in additional_repos.split(',')]
     return [x for x in enabled_repos if x.id in repos]
 
+def dnf_base():
+    # dnf.Base() doesn't read dnf.conf, vars nor repos by itself, unlike the dnf CLI
+    base = dnf.Base()
+    base.conf.read()
+    base.conf.substitutions.update_from_etc(base.conf.installroot, varsdir=base.conf.varsdir)
+    base.read_all_repos()
+    return base
+
 def install_helper(session, args, action):
     assert action in ('install', 'update')
 
@@ -120,9 +129,8 @@ def install_helper(session, args, action):
     if action == 'install' and not packages:
         raise Exception('Missing or empty argument `packages`')
 
-    yum_instance = dnf.Base()
-    yum_instance.read_all_repos()
-    repos = build_repo_list(list(yum_instance.repos.iter_enabled()), args.get('repos'))
+    with dnf_base() as base:
+        repos = build_repo_list(base.repos.iter_enabled(), args.get('repos'))
 
     task = None
     res = None
@@ -161,16 +169,17 @@ def install(session, args):
 @error_wrapped
 @operationlock()
 def check_update(session, args):
-    yum_instance = dnf.Base()
-    yum_instance.read_all_repos()
-    repos = build_repo_list(list(yum_instance.repos.iter_enabled()), args.get('repos'))
-    for repo in yum_instance.repos.iter_enabled():
-        repo.disable()
-    for repo in repos:
-        repo.enable()
-    yum_instance.fill_sack()
-    packages = yum_instance.sack.query().available().upgrades()
-    return json.dumps([display_package(p) for p in packages])
+    with dnf_base() as base:
+        repos = build_repo_list(base.repos.iter_enabled(), args.get('repos'))
+        for repo in list(base.repos.iter_enabled()):
+            if repo in repos:
+                repo.load_metadata_other = True  # changelogs
+            else:
+                repo.disable()
+        base.fill_sack()
+        # same as `dnf check-update`: honors repo priorities, latest version only
+        packages = base.sack.query().filterm(upgrades_by_priority=True, arch__neq=['src', 'nosrc']).latest()
+        return json.dumps([display_package(p) for p in packages])
 
 @error_wrapped
 @operationlock(timeout=10)
