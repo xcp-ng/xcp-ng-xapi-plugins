@@ -6,6 +6,8 @@ on:
 
 jobs:
   pytest:
+    # commits pushed to this repo are tested by the push event, so only test PRs from forks
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
     steps:
     - name: checkout
@@ -31,6 +33,7 @@ jobs:
       run: wox
 
   dnf-integration:
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name != github.repository
     runs-on: ubuntu-24.04
     # an outdated EL10 release, so that there are updates to check and install
     container: ghcr.io/almalinux/10-base:10.0
