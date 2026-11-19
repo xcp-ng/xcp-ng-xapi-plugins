@@ -1,4 +1,3 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
 import json
@@ -76,7 +75,8 @@ class ProcessException(subprocess.CalledProcessError):
         return "Command '%s' failed with code: %d" % (self.cmd, self.returncode)
 
 def run_command(command, check=True):
-    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                               text=True)
     stdout, stderr = process.communicate()
     code = process.returncode
     if check and code != 0:

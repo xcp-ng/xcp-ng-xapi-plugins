@@ -1,10 +1,11 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 from functools import wraps
-import ConfigParser
+import calendar
+import configparser
 import json
-import yum
+import dnf
 
 import XenAPIPlugin
 
@@ -97,10 +98,13 @@ def operationlock(*pid_args, **pid_kwargs):
 
 
 def display_package(p):
-    if len(p.changelog):
-        changelog = {'date': p.changelog[0][0], 'author': p.changelog[0][1], 'description': p.changelog[0][2]}
-    else:
-        changelog = None
+    changelog = None
+    if p.changelogs:
+        last = max(p.changelogs, key=lambda c: c['timestamp'])
+        # dnf gives a datetime.date, yum gave an epoch timestamp: keep the latter
+        changelog = {'date': calendar.timegm(last['timestamp'].timetuple()),
+                     'author': last['author'],
+                     'description': last['text']}
     return {'name': p.name, 'version': p.version, 'release': p.release, 'description': p.summary,
             'changelog': changelog, 'url': p.url, 'size': p.size, 'license': p.license}
 
@@ -108,7 +112,15 @@ def build_repo_list(enabled_repos, additional_repos):
     repos = list(DEFAULT_REPOS)
     if additional_repos:
         repos += [x.strip() for x in additional_repos.split(',')]
-    return [x.id for x in enabled_repos if x.id in repos]
+    return [x for x in enabled_repos if x.id in repos]
+
+def dnf_base():
+    # dnf.Base() doesn't read dnf.conf, vars nor repos by itself, unlike the dnf CLI
+    base = dnf.Base()
+    base.conf.read()
+    base.conf.substitutions.update_from_etc(base.conf.installroot, varsdir=base.conf.varsdir)
+    base.read_all_repos()
+    return base
 
 def install_helper(session, args, action):
     assert action in ('install', 'update')
@@ -117,10 +129,8 @@ def install_helper(session, args, action):
     if action == 'install' and not packages:
         raise Exception('Missing or empty argument `packages`')
 
-    yum_instance = yum.YumBase()
-    yum_instance.preconf.debuglevel = 0
-    yum_instance.preconf.plugins = False
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
+    with dnf_base() as base:
+        repos = build_repo_list(base.repos.iter_enabled(), args.get('repos'))
 
     task = None
     res = None
@@ -137,7 +147,7 @@ def install_helper(session, args, action):
                 action.capitalize(), packages, host_name, host_uuid
             ), '')
 
-        command = ['yum', action, '--disablerepo=*', '--enablerepo=' + ','.join(repos), '-y']
+        command = ['dnf', action, '--disablerepo=*', '--enablerepo=' + ','.join(r.id for r in repos), '-y']
         if packages:
             command.append(packages)
         res = run_command(command)
@@ -159,20 +169,17 @@ def install(session, args):
 @error_wrapped
 @operationlock()
 def check_update(session, args):
-    yum_instance = yum.YumBase()
-    yum_instance.preconf.debuglevel = 0
-    yum_instance.preconf.plugins = True
-    repos = build_repo_list(yum_instance.repos.listEnabled(), args.get('repos'))
-    yum_instance.repos.disableRepo('*')
-    yum_instance.repos.enableRepo(','.join(repos))
-    packages = yum_instance.doPackageLists(pkgnarrow='updates')
-    del yum_instance.ts
-    yum_instance.initActionTs()  # make a new, blank ts to populate
-    yum_instance.populateTs(keepold=0)
-    yum_instance.ts.check()  # required for ordering
-    yum_instance.ts.order()
-    # Python 2&3 compatible code
-    return json.dumps(list(map(display_package, packages)))
+    with dnf_base() as base:
+        repos = build_repo_list(base.repos.iter_enabled(), args.get('repos'))
+        for repo in list(base.repos.iter_enabled()):
+            if repo in repos:
+                repo.load_metadata_other = True  # changelogs
+            else:
+                repo.disable()
+        base.fill_sack()
+        # same as `dnf check-update`: honors repo priorities, latest version only
+        packages = base.sack.query().filterm(upgrades_by_priority=True, arch__neq=['src', 'nosrc']).latest()
+        return json.dumps([display_package(p) for p in packages])
 
 @error_wrapped
 @operationlock(timeout=10)
@@ -187,7 +194,7 @@ def query_installed(session, args):
 
     import re
     packages = re.sub(r'\s+', ' ', packages).replace(',', ' ').split(' ')
-    packages = filter(lambda package: package, packages)
+    packages = [package for package in packages if package]
     if not packages:
         return '{}'
 
@@ -239,7 +246,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = configparser.ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
     new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
     return json.dumps(new_dict)
@@ -257,7 +264,7 @@ def set_proxies(session, args):
     special_url_prefix = 'http://HTTPS///'
     https_url_prefix = 'https://'
     proxies = json.loads(args['proxies'])
-    config = ConfigParser.ConfigParser()
+    config = configparser.ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
         raise Exception('could not read file %s' % CONFIGURATION_FILE)
 
