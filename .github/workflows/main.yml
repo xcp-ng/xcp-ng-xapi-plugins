@@ -7,25 +7,48 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # XCP-ng 8.3 uses python 3.6, XCP-ng 9.0 uses python 3.12.
+        python: ["3.6.15", "3.12.9"]
     steps:
     - name: checkout
       uses: actions/checkout@v6
 
-    - name: Set up Python
-      uses: LizardByte/actions/actions/setup_python@v2026.227.200013
+    - name: Cache pyenv for ${{ matrix.python }}
+      id: pyenv-cache
+      uses: actions/cache@v4
       with:
-        python-version: |
-          '3.6.15'
-          '3.12.13'
+        path: ~/.pyenv
+        key: pyenv-${{ runner.os }}-${{ matrix.python }}
 
-    - name: Make XCP-ng python versions globally available 
+    # GitHub's actions/setup-python has no python 3.6 build for the
+    # current runners, so install the interpreters with pyenv (compiles
+    # from source; restored from the cache above when available).
+    # update-environment is off so it does not create its own
+    # virtualenv; uv builds the one the tests run in.
+    - name: Set up Python
+      if: steps.pyenv-cache.outputs.cache-hit != 'true'
+      uses: LizardByte/actions/actions/setup_python@v2026.1108.210022
+      with:
+        python-version: ${{ matrix.python }}
+        update-environment: false
+
+    - name: Use cached Python
+      if: steps.pyenv-cache.outputs.cache-hit == 'true'
       run: |
-        sudo ln -s $(pyenv root)/versions/3.6.15/bin/python3.6 /usr/bin/
-      # The following line is not needed as long as ubuntu 24.04 is used
-      # sudo ln -s $(pyenv root)/versions/3.12.13/bin/python3.12 /usr/bin/
+        test -x "$HOME/.pyenv/versions/${{ matrix.python }}/bin/python3" || exit 1
+        echo "$HOME/.pyenv/shims" >> "$GITHUB_PATH"
+        echo "$HOME/.pyenv/bin" >> "$GITHUB_PATH"
+        sudo update-alternatives --install /usr/bin/python python "$HOME/.pyenv/shims/python" 1
+        python --version
 
-    - name: Install Environment manager
-      run: pip install wox
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
+
+    - name: Install dependencies
+      run: uv sync --python "${{ matrix.python }}" --group test
 
     - name: Run unit tests
-      run: wox
+      run: uv run pytest
