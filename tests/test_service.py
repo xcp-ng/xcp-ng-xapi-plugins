@@ -1,8 +1,8 @@
 import mock
 import pytest
 import XenAPIPlugin
+from service import restart_service, start_service, stop_service, try_restart_service
 
-from service import start_service, stop_service, restart_service, try_restart_service
 
 @mock.patch("service.run_command", autospec=True)
 class TestService:

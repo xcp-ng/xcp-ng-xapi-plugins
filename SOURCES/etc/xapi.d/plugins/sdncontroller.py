@@ -5,7 +5,7 @@ import re
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, error_wrapped, run_command, raise_plugin_error
+from xcpngutils import configure_logging, error_wrapped, raise_plugin_error, run_command
 
 OPENFLOW_PROTOCOL = "OpenFlow11"
 OVS_OFCTL_CMD = "ovs-ofctl"

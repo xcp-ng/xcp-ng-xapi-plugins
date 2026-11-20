@@ -1,7 +1,6 @@
-import logging
-import pytest
 
 from xcpngutils import configure_logging
+
 
 class TestFormatter:
     def test_newline_msg(self, capsys):

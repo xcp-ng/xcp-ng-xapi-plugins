@@ -6,7 +6,8 @@ import json
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, error_wrapped, run_command
+
 
 # returns a JSON dict {<poolname>: {mountpoint: <mountpoint>, ...}}
 # xe host-call-plugin host-uuid=<UUID> plugin=zfs.py fn=list_zfs_pools

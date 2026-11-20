@@ -1,8 +1,9 @@
 import json
-from smartctl_outputs.smartctl_sda import INFO_SDA
-from smartctl_outputs.smartctl_nvme1 import INFO_NVME1
+
 from smartctl_outputs.smartctl_megaraid0 import INFO_MEGARAID0
 from smartctl_outputs.smartctl_megaraid1 import INFO_MEGARAID1
+from smartctl_outputs.smartctl_nvme1 import INFO_NVME1
+from smartctl_outputs.smartctl_sda import INFO_SDA
 
 # Parse the INFO JSON string for each devices
 info_sda_dict = json.loads(INFO_SDA)

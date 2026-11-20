@@ -1,16 +1,15 @@
 import json
-import mock
-import pytest
-import XenAPIPlugin
 
-from lvm import \
-    list_physical_volumes, \
-    list_volume_groups, \
-    list_logical_volumes, \
-    create_physical_volume, \
-    create_volume_group, \
-    destroy_volume_group, \
-    create_thin_pool
+import mock
+from lvm import (
+    create_physical_volume,
+    create_thin_pool,
+    create_volume_group,
+    destroy_volume_group,
+    list_logical_volumes,
+    list_physical_volumes,
+    list_volume_groups,
+)
 
 TESTED_VG_NAME = 'linstor_group'
 TESTED_DEVICES = '/dev/sdb,/dev/sdc'

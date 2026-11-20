@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
 import logging
 import logging.handlers
 import os
@@ -9,9 +8,11 @@ import signal
 import subprocess
 import sys
 import traceback
-import XenAPIPlugin
 from contextlib import contextmanager
 from functools import wraps
+
+import XenAPIPlugin
+
 
 class NoNewlineFormatter(logging.Formatter):
     def format(self, record):
@@ -134,7 +135,7 @@ def error_wrapped(func):
             raise
         except EnvironmentError as e:
             message = e.strerror if e.strerror is not None else str(e.args)
-            raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()])
+            raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()]) from e
         except ProcessException as e:
             raise_plugin_error(
                 e.returncode, str(e),

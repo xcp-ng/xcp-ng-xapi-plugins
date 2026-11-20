@@ -38,6 +38,7 @@ lint = [
     "flake8",
     "autopep8",
     "pydocstyle",
+    "pyright",
 ]
 # Packaging helpers. strip-python3 removes type annotations and downgrades
 # the syntax to python 2.7 compatible code for what is installed on XCP-ng
@@ -53,3 +54,32 @@ log_cli = true
 log_cli_level = "info"
 log_cli_format = "%(asctime)s %(levelname)s %(message)s"
 log_cli_date_format = "%b %d %H:%M:%S"
+
+[tool.ruff]
+# The sources must stay compatible with python 3.6 (XCP-ng 8.3);
+# ruff cannot express that (its oldest target is py37), so py37 is
+# used and the syntax is kept 3.6 compatible by the strip check.
+target-version = "py37"
+line-length = 120
+
+[tool.ruff.lint]
+# E, W: pycodestyle (same ignores as the old [pycodestyle] setup.cfg section)
+# F: pyflakes
+# I: import sorting
+# B: bugbear
+select = ["E", "W", "F", "I", "B"]
+# W503/W504 are not implemented in ruff, so they stay ignored only in
+# the pycodestyle/flake8 configuration (setup.cfg).
+ignore = ["E261", "E302", "E305", "E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["xcpngutils"]
+
+[tool.pyright]
+# Type check with the oldest python the sources must support (XCP-ng 8.3).
+# Only the shared xcpngutils package is checked for now; the individual
+# plugins are not yet typed.
+pythonVersion = "3.6"
+typeCheckingMode = "basic"
+include = ["SOURCES/etc/xapi.d/plugins/xcpngutils"]
+extraPaths = ["stubs"]

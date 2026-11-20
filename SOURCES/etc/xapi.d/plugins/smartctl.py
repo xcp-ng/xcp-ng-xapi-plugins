@@ -2,10 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import json
+
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, error_wrapped, run_command
 from xcpngutils.operationlocker import OperationLocker
+
 
 @error_wrapped
 def _list_devices():

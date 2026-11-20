@@ -1,9 +1,10 @@
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
-
 from zfs import list_zfs_pools
+
 
 @mock.patch('zfs.run_command', autospec=True)
 class TestListZfsPools:

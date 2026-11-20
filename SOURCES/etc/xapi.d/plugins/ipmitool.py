@@ -3,15 +3,16 @@
 
 import json
 import sys
+
 import XenAPIPlugin
 
 sys.path.append(".")
 from xcpngutils import (
-    configure_logging,
-    run_command,
-    error_wrapped,
     ProcessException,
+    configure_logging,
+    error_wrapped,
     raise_plugin_error,
+    run_command,
 )
 
 

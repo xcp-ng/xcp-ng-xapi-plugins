@@ -1,9 +1,10 @@
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
-
 from lsblk import list_block_devices
+
 
 @mock.patch('lsblk.run_command', autospec=True)
 class TestListBlockDevices:
