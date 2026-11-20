@@ -1,6 +1,6 @@
 class ConfigParser(object):
-    def __init__(self, defaults={}):
-        self._defaults = defaults
+    def __init__(self, defaults=None):
+        self._defaults = {} if defaults is None else defaults
         self._sections = {}
 
     def sections(self):

@@ -1,13 +1,12 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import errno
 import json
-import sys
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped, strtobool, raise_plugin_error
+from xcpngutils import configure_logging, error_wrapped, raise_plugin_error, run_command, strtobool
+
 
 def raise_lvm_error(code, stderr):
     raise_plugin_error('LVM_ERROR({})'.format(code), stderr)

@@ -1,10 +1,10 @@
-from functools import partial
-from xcpngutils import TimeoutException, timeout
 import errno
 import fcntl
 import os
 import signal
 import sys
+
+from xcpngutils import TimeoutException, timeout
 
 FILE_LOCKER_DIRECTORY = "/var/run/"
 
@@ -70,7 +70,7 @@ class FileLocker(object):
                         safe_flock(self.file, fcntl.LOCK_EX)
                 except TimeoutException:
                     self._timeout_reached()
-                    raise Exception('Timeout reached')
+                    raise Exception('Timeout reached') from None
         except Exception:
             if self.file:
                 self.file.close()
@@ -120,7 +120,9 @@ class FileLocker(object):
         raise SystemExit(1)
 
     def _register_signal_handler(self):
-        self.previous_signal = signal.signal(signal.SIGTERM, partial(self._handle_sigterm, self))
+        def handler(signum, frame):
+            self._handle_sigterm(signum, frame)
+        self.previous_signal = signal.signal(signal.SIGTERM, handler)
 
     def _unregister_signal_handler(self):
         signal.signal(signal.SIGTERM, self.previous_signal)

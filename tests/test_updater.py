@@ -1,20 +1,13 @@
-from ConfigParser import ConfigParser
 import errno
 import fcntl
 import json
+import time
+
 import mock
 import pytest
-import time
 import XenAPIPlugin
-
-from updater import \
-    install, \
-    check_update, \
-    get_proxies, \
-    set_proxies, \
-    update, \
-    query_installed, \
-    DEFAULT_REPOS
+from ConfigParser import ConfigParser
+from updater import DEFAULT_REPOS, check_update, get_proxies, install, query_installed, set_proxies, update
 
 # ==============================================================================
 # Install/Update.
@@ -339,8 +332,8 @@ class TestNotLockedLockFile:
 # ==============================================================================
 
 class MockedUpdaterConfigParser(ConfigParser):
-    def __init__(self, defaults={}):
-        self._defaults = defaults
+    def __init__(self, defaults=None):
+        self._defaults = {} if defaults is None else defaults
         self._sections = {}
 
     def sections(self):

@@ -5,7 +5,8 @@ import json
 
 import XenAPIPlugin
 
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, error_wrapped, run_command
+
 
 @error_wrapped
 def get_hyperthreading(session, args):

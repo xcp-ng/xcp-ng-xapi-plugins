@@ -1,10 +1,11 @@
 import errno
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
+from netdata import get_netdata_api_key, install_netdata, is_netdata_installed
 
-from netdata import is_netdata_installed, install_netdata, get_netdata_api_key
 
 @mock.patch('netdata.run_command', autospec=True)
 class TestIsIntalled:

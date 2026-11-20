@@ -1,16 +1,15 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from functools import wraps
-import ConfigParser
 import json
+from functools import wraps
+
+import ConfigParser
+import XenAPIPlugin
 import yum
 
-import XenAPIPlugin
-
-from xcpngutils import configure_logging, run_command, error_wrapped
+from xcpngutils import configure_logging, error_wrapped, run_command
 from xcpngutils.filelocker import FileLocker
-
 
 DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor')
 
@@ -124,7 +123,6 @@ def install_helper(session, args, action):
 
     task = None
     res = None
-    error = None
     try:
         host = session.xenapi.session.get_this_host(session.handle)
         host_name = session.xenapi.host.get_name_label(host)
@@ -142,14 +140,13 @@ def install_helper(session, args, action):
             command.append(packages)
         res = run_command(command)
         session.xenapi.task.set_status(task, 'success')
-    except Exception as e:
-        error = e
-    finally:
+    except Exception:
         if task:
             session.xenapi.task.destroy(task)
-        if error:
-            raise error
-        return json.dumps(res)
+        raise
+    if task:
+        session.xenapi.task.destroy(task)
+    return json.dumps(res)
 
 @error_wrapped
 @operationlock(timeout=10)

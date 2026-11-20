@@ -1,6 +1,8 @@
-from xcpngutils.filelocker import FileLocker
 import os
 import sys
+
+from xcpngutils.filelocker import FileLocker
+
 
 class PidFile(FileLocker):
     def __init__(self, lockname=None, timeout=0, auto_remove=True, dir=None):
@@ -11,7 +13,10 @@ class PidFile(FileLocker):
         super(PidFile, self).__init__(lockname, timeout, auto_remove, dir)
 
     def _locked(self):
-        self.file.seek(0)
-        self.file.truncate()
-        self.file.write('{}\n'.format(self.pid))
-        self.file.flush()
+        file = self.file
+        if file is None:
+            return
+        file.seek(0)
+        file.truncate()
+        file.write('{}\n'.format(self.pid))
+        file.flush()
