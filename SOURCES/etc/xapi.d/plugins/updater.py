@@ -4,9 +4,13 @@
 import json
 from functools import wraps
 
-import ConfigParser
 import XenAPIPlugin
 import yum
+
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
 
 from xcpngutils import configure_logging, error_wrapped, run_command
 from xcpngutils.filelocker import FileLocker
@@ -236,7 +240,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
     new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
     return json.dumps(new_dict)
@@ -254,7 +258,7 @@ def set_proxies(session, args):
     special_url_prefix = 'http://HTTPS///'
     https_url_prefix = 'https://'
     proxies = json.loads(args['proxies'])
-    config = ConfigParser.ConfigParser()
+    config = ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
         raise Exception('could not read file %s' % CONFIGURATION_FILE)
 

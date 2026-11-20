@@ -6,7 +6,7 @@ import time
 import mock
 import pytest
 import XenAPIPlugin
-from ConfigParser import ConfigParser
+from mocked_configparser import ConfigParser
 from updater import DEFAULT_REPOS, check_update, get_proxies, install, query_installed, set_proxies, update
 
 # ==============================================================================
@@ -369,7 +369,7 @@ class MockedUpdaterConfigParser(ConfigParser):
 
 CONFIG_PROXIES = '{"repo_yum": "http://user:password@proxy.example.com:3128", "repo_yum_2": "_none_", "repo_yum_3": "_none_"}' # noqa: E501
 
-@mock.patch('ConfigParser.ConfigParser', new_callable=lambda: MockedUpdaterConfigParser)
+@mock.patch('updater.ConfigParser', new_callable=lambda: MockedUpdaterConfigParser)
 class TestGetProxies:
     def test_get_proxies(self, ConfigParser, fs):
         res = get_proxies(None, None)
@@ -385,7 +385,7 @@ class TestGetProxies:
             assert e.value.params[0] == '-1'
             assert e.value.params[1] == 'Error!'
 
-@mock.patch('ConfigParser.ConfigParser', new_callable=lambda: MockedUpdaterConfigParser)
+@mock.patch('updater.ConfigParser', new_callable=lambda: MockedUpdaterConfigParser)
 class TestSetProxies:
     def test_set_proxies(self, ConfigParser, fs):
         fs.create_dir('/etc/yum.repos.d')
