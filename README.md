@@ -2,6 +2,70 @@
 
 This repo hosts all the extra plugins installed in a XCP-ng host in `/etc/xapi.d/plugins`.
 
+## Development
+
+The sources must stay compatible with the oldest python the plugins run
+on: **python 3.6** on XCP-ng 8.3 (python 2.7 is also available there) and
+**python 3.12** on XCP-ng 9.0. The code is written with type annotations
+and is downgraded to py2.7/py3.6 compatible code by `strip-python3` at
+install time; the test suite and linters run on the annotated source.
+
+All tooling is managed with [uv](https://docs.astral.sh/uv/). A system
+python 3.6 and 3.12 interpreter must be present (uv cannot install
+python 3.6).
+
+### Run the tests
+
+```bash
+# with the default (latest) python
+uv sync --group test && uv run pytest
+
+# with the XCP-ng python versions (each fail if the interpreter is absent)
+scripts/run_tests.sh 3.6
+scripts/run_tests.sh 3.12
+scripts/run_tests.sh all
+```
+
+### Lint and type check
+
+```bash
+uv sync --group lint
+
+uv run ruff check .                                  # linter
+uv run autopep8 -r --diff --max-line-length 120 SOURCES tests  # formatting (no diff = OK)
+uv run flake8 SOURCES tests
+uv run pydocstyle
+uv run pyright                                       # type check (xcpngutils, py3.6)
+```
+
+`ruff` and `flake8` use the same pycodestyle line length (120) and ignore
+list as the previous configuration. `pyright` is scoped to the shared
+`xcpngutils` package for now; widen `include` in `pyproject.toml` as the
+individual plugins get typed.
+
+### Compatibility check
+
+The RPM installs the output of `strip-python3`, so the sources must not
+use syntax newer than python 3.6. This verifies that the stripped code
+compiles with python 3.6:
+
+```bash
+uv sync --group build
+scripts/check_stripped_compat.sh
+```
+
+`strip-python3` needs python 3.9+ to run (broken on newer pythons), so
+the tooling runs it under python 3.12.
+
+### Writing typed code
+
+- Use python 3.6 compatible typing only: `typing.Optional`, `typing.List`,
+  `typing.Dict`, `typing.Callable`, etc. Do **not** use PEP 585 builtins
+  (`list[str]`) or PEP 604 unions (`str | None`) in the shipped sources.
+- Keep the code free of syntax newer than python 3.6 (no walrus `:=`, no
+  `str.removeprefix`, etc.); the compatibility check enforces this.
+
+  
 ## Return format
 
 A plugin should respect this return format:
@@ -445,15 +509,4 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py args:bridge=xenbr
   "stderr": "ovs-ofctl: xenbr10 is not a bridge or a socket\n",
   "stdout": ""
 }
-```
-
-## Tests
-
-Install the test dependencies:
-```bash
-pip install --group test
-```
-and run the tests:
-```bash
-pytest
 ```
