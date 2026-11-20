@@ -7,25 +7,30 @@ on:
 jobs:
   pytest:
     runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # XCP-ng 8.3 uses python 3.6, XCP-ng 9.0 uses python 3.12.
+        python: ["3.6.15", "3.12.13"]
     steps:
     - name: checkout
       uses: actions/checkout@v6
 
+    # GitHub's actions/setup-python has no python 3.6 build for the
+    # current runners, so install the interpreters with pyenv (compiles
+    # from source). update-environment is off so it does not create its
+    # own virtualenv; uv builds the one the tests run in.
     - name: Set up Python
-      uses: LizardByte/actions/actions/setup_python@v2026.227.200013
+      uses: LizardByte/actions/actions/setup_python@v2026.1108.210022
       with:
-        python-version: |
-          '3.6.15'
-          '3.12.13'
+        python-version: ${{ matrix.python }}
+        update-environment: false
 
-    - name: Make XCP-ng python versions globally available 
-      run: |
-        sudo ln -s $(pyenv root)/versions/3.6.15/bin/python3.6 /usr/bin/
-      # The following line is not needed as long as ubuntu 24.04 is used
-      # sudo ln -s $(pyenv root)/versions/3.12.13/bin/python3.12 /usr/bin/
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v6
 
-    - name: Install Environment manager
-      run: pip install wox
+    - name: Install dependencies
+      run: uv sync --python "${{ matrix.python }}" --group test
 
     - name: Run unit tests
-      run: wox
+      run: uv run pytest

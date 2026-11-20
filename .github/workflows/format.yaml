@@ -3,31 +3,66 @@ name: Check coding style
 on: [push]
 
 jobs:
-  pycodestyle:
-    runs-on: ubuntu-latest
+  ruff:
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pycodestyle
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
-    - name: pycodestyle
-      run: |
-        pycodestyle
-  pydocstyle:
-    runs-on: ubuntu-latest
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - uses: astral-sh/setup-uv@v6
+    - run: uv sync --group lint
+    - name: ruff
+      run: uv run ruff check .
+
+  style:
+    runs-on: ubuntu-24.04
     steps:
-    - uses: actions/checkout@v2
-    - name: Set up Python
-      uses: actions/setup-python@v2
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install pydocstyle
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - uses: astral-sh/setup-uv@v6
+    - run: uv sync --group lint
+    - name: autopep8
+      run: uv run autopep8 -r --diff --max-line-length 120 SOURCES tests
+    - name: flake8
+      run: uv run flake8 SOURCES tests
     - name: pydocstyle
-      run: |
-        pydocstyle
+      run: uv run pydocstyle
+
+  pyright:
+    runs-on: ubuntu-24.04
+    steps:
+    - uses: actions/checkout@v6
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+    - uses: astral-sh/setup-uv@v6
+    - run: uv sync --group lint
+    - name: pyright
+      run: uv run pyright
+
+  strip-compat:
+    # The sources must stay installable on XCP-ng 8.3: verify that the
+    # output of strip-python3 (what the RPM installs) compiles with
+    # python 3.6. strip-python3 needs python 3.9+ to run (3.12). The
+    # interpreters are installed with pyenv, as GitHub's
+    # actions/setup-python has no python 3.6 build for the current
+    # runners.
+    runs-on: ubuntu-24.04
+    env:
+      PYTHON36: /home/runner/.pyenv/versions/3.6.15/bin/python3.6
+    steps:
+    - uses: actions/checkout@v6
+    - name: Set up Python
+      uses: LizardByte/actions/actions/setup_python@v2026.1108.210022
+      with:
+        python-version: |
+          3.6.15
+          3.12.13
+        update-environment: false
+    - uses: astral-sh/setup-uv@v6
+    - run: uv sync --python "3.12" --group build
+    - name: strip-python3 compatibility check
+      run: bash scripts/check_stripped_compat.sh
