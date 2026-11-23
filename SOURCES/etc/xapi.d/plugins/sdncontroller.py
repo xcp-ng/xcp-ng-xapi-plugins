@@ -18,7 +18,6 @@ OFPVID_NONE = "0xffff"
 E_PARSER = 1
 E_PARAMS = 2
 E_OVSCALL = 3
-E_PORTS = 4
 
 # rules names per direction
 TO = 0
@@ -406,9 +405,14 @@ def add_rule(_session, args):
     # update vlanid first, as bridge could be replaced by parent bridge
     update_args_from_ovs(rule_args)
     if rule_args["ofports"] is None:
-        log_and_raise_error(
-            E_PORTS, "No ports found for bridge: {}".format(rule_args["bridge"])
+        # no port on the bridge (e.g. no VM running on the host): nothing to
+        # apply, the rule will be applied when a port appears
+        _LOGGER.warning(
+            "No ports found for bridge: {}, nothing to apply".format(
+                rule_args["bridge"]
+            )
         )
+        return json.dumps(True)
 
     # cleanup the cookie (if already used) to 'upgrade' the rule
     if rule_args["cookie"] != "0x0":
@@ -423,7 +427,8 @@ def add_rule(_session, args):
     _LOGGER.info("Built rules: {}".format(rules))
 
     if not rules:
-        log_and_raise_error(E_PORTS, "add_rule: No rules were build")
+        _LOGGER.warning("No rules were built, nothing to apply")
+        return json.dumps(True)
 
     for rule in rules:
         run_ofctl_cmd("add-flow", rule_args["parent-bridge"], rule)
