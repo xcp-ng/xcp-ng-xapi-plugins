@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import json
 import logging
 import logging.handlers
 import os
@@ -9,31 +8,37 @@ import signal
 import subprocess
 import sys
 import traceback
-import XenAPIPlugin
+import types
 from contextlib import contextmanager
 from functools import wraps
+from typing import Any, Callable, Dict, List, Optional, Sequence, Type, Union
+
+import XenAPIPlugin
+
 
 class NoNewlineFormatter(logging.Formatter):
-    def format(self, record):
+    def format(self, record: logging.LogRecord) -> str:
         formatted = super(NoNewlineFormatter, self).format(record)
         return formatted.replace("\n", "\\n").replace("\r", "\\r")
 
-def configure_logging(name):
+def configure_logging(name: str) -> logging.Logger:
     log_file = "/var/log/" + name + "-plugin.log"
     enable_dev_logging_file = "/opt/xensource/packages/files/" + name + "-plugin/devlogging_enabled"
 
     logger = logging.getLogger(name)
     logger.setLevel(logging.DEBUG)
 
-    def handle_unhandled_exceptions(exception_type, exception_value,
-                                    exception_traceback):
+    def handle_unhandled_exceptions(exception_type: Type[BaseException],
+                                    exception_value: BaseException,
+                                    exception_traceback: types.TracebackType) -> None:
         if not issubclass(exception_type, KeyboardInterrupt):
             log_unhandled_exception("standalone", exception_type, exception_value,
                                     exception_traceback)
         sys.__excepthook__(exception_type, exception_value, exception_traceback)
 
-    def log_unhandled_exception(origin, exception_type, exception_value,
-                                exception_traceback):
+    def log_unhandled_exception(origin: str, exception_type: Type[BaseException],
+                                exception_value: BaseException,
+                                exception_traceback: types.TracebackType) -> None:
         logger.error("Nobody caught %s exception: %s" % (origin, exception_type))
         problem = traceback.format_exception(exception_type,
                                              exception_value,
@@ -45,8 +50,8 @@ def configure_logging(name):
         '%(asctime)s - [%(process)d] - %(levelname)s - %(message)s',
         '%Y-%m-%d %H:%M:%S')
 
-    handlers = []
-    log_level = logging.INFO
+    handlers: List[logging.Handler] = []
+    log_level: int = logging.INFO
 
     if os.access(os.path.dirname(log_file), os.W_OK):
         fileh = logging.handlers.RotatingFileHandler(log_file, maxBytes=5 * 1024 * 1024, backupCount=5)
@@ -68,14 +73,14 @@ def configure_logging(name):
 
 
 class ProcessException(subprocess.CalledProcessError):
-    def __init__(self, code, command, stdout, stderr):
+    def __init__(self, code: int, command: Sequence[str], stdout: bytes, stderr: bytes) -> None:
         super(ProcessException, self).__init__(code, command, output=stdout)
         self.stderr = stderr
 
-    def __str__(self):
+    def __str__(self) -> str:
         return "Command '%s' failed with code: %d" % (self.cmd, self.returncode)
 
-def run_command(command, check=True):
+def run_command(command: Sequence[str], check: bool = True) -> Dict[str, Union[bytes, Sequence[str], int]]:
     process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     stdout, stderr = process.communicate()
     code = process.returncode
@@ -89,8 +94,8 @@ class TimeoutException(Exception):
     pass
 
 @contextmanager
-def timeout(seconds):
-    def handler(signum, frame):
+def timeout(seconds: int):
+    def handler(signum: int, frame: Optional[object]) -> None:
         raise TimeoutException()
 
     old_handler = signal.signal(signal.SIGALRM, handler)
@@ -103,7 +108,7 @@ def timeout(seconds):
         signal.signal(signal.SIGALRM, old_handler)
 
 
-def strtobool(str):
+def strtobool(str: Optional[str]) -> bool:
     # Note: `distutils` package is deprecated and slated for removal in Python 3.12.
     # There is not alternative for strtobool.
     # See: https://peps.python.org/pep-0632/#migration-advice
@@ -120,13 +125,13 @@ def strtobool(str):
     raise ValueError("invalid truth value '{}'".format(str))
 
 
-def raise_plugin_error(code, message, details='', backtrace=''):
+def raise_plugin_error(code: Union[str, int], message: str, details: str = '', backtrace: str = '') -> None:
     raise XenAPIPlugin.Failure(str(code), [message, details, backtrace])
 
 
-def error_wrapped(func):
+def error_wrapped(func: Callable[..., Any]) -> Callable[..., Any]:
     @wraps(func)
-    def wrapper(*args, **kwds):
+    def wrapper(*args: Any, **kwds: Any) -> Any:
         try:
             return func(*args, **kwds)
         except XenAPIPlugin.Failure:
@@ -134,7 +139,7 @@ def error_wrapped(func):
             raise
         except EnvironmentError as e:
             message = e.strerror if e.strerror is not None else str(e.args)
-            raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()])
+            raise XenAPIPlugin.Failure(str(e.errno), [message, str(e.filename), traceback.format_exc()]) from e
         except ProcessException as e:
             raise_plugin_error(
                 e.returncode, str(e),
@@ -146,5 +151,5 @@ def error_wrapped(func):
     return wrapper
 
 
-def install_package(package_name):
+def install_package(package_name: str) -> Dict[str, Union[bytes, Sequence[str], int]]:
     return run_command(['yum', 'install', '-y', package_name])

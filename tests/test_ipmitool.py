@@ -1,10 +1,11 @@
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
-from xcpngutils import ProcessException
+from ipmitool import ipmi_lan, is_ipmi_device_available, sensor_data, sensor_info
 
-from ipmitool import is_ipmi_device_available, sensor_data, sensor_info, ipmi_lan
+from xcpngutils import ProcessException
 
 ipmitool_sdr_list = """
 SEL              | Not Readable      | ns

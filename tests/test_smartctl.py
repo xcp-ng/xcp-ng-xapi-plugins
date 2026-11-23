@@ -1,14 +1,14 @@
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
-
-from smartctl import get_information, get_health
-from smartctl_outputs.smartctl_sda import INFO_SDA, HEALTH_SDA
-from smartctl_outputs.smartctl_nvme1 import INFO_NVME1, HEALTH_NVME1
-from smartctl_outputs.smartctl_megaraid0 import INFO_MEGARAID0, HEALTH_MEGARAID0
-from smartctl_outputs.smartctl_megaraid1 import INFO_MEGARAID1, HEALTH_MEGARAID1
-from smartctl_outputs.smartctl_expected_output import EXPECTED_INFO, EXPECTED_HEALTH
+from smartctl import get_health, get_information
+from smartctl_outputs.smartctl_expected_output import EXPECTED_HEALTH, EXPECTED_INFO
+from smartctl_outputs.smartctl_megaraid0 import HEALTH_MEGARAID0, INFO_MEGARAID0
+from smartctl_outputs.smartctl_megaraid1 import HEALTH_MEGARAID1, INFO_MEGARAID1
+from smartctl_outputs.smartctl_nvme1 import HEALTH_NVME1, INFO_NVME1
+from smartctl_outputs.smartctl_sda import HEALTH_SDA, INFO_SDA
 
 LIST_OF_DEVICES = [
     {"name": "/dev/sda", "type": "sat"},

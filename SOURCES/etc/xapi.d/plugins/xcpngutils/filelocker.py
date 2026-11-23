@@ -1,14 +1,15 @@
-from functools import partial
-from xcpngutils import TimeoutException, timeout
 import errno
 import fcntl
 import os
 import signal
 import sys
+from typing import Optional
+
+from xcpngutils import TimeoutException, timeout
 
 FILE_LOCKER_DIRECTORY = "/var/run/"
 
-def safe_flock(file, flags):
+def safe_flock(file, flags: int) -> None:
     filename = file.name
 
     while True:
@@ -34,7 +35,8 @@ def safe_flock(file, flags):
 class FileLocker(object):
     __slots__ = ('pid', 'lockname', 'filename', 'previous_signal', 'file', 'timeout', 'auto_remove')
 
-    def __init__(self, lockname=None, timeout=0, auto_remove=True, dir=None):
+    def __init__(self, lockname: Optional[str] = None, timeout: int = 0,
+                 auto_remove: bool = True, dir: Optional[str] = None) -> None:
         if not dir:
             dir = FILE_LOCKER_DIRECTORY
         if not os.path.exists(dir):
@@ -48,17 +50,18 @@ class FileLocker(object):
         self.timeout = timeout
         self.auto_remove = auto_remove
 
-    def __del__(self):
+    def __del__(self) -> None:
         self.unlock()
 
-    def __enter__(self):
+    def __enter__(self) -> "FileLocker":
         self.lock()
         return self
 
-    def __exit__(self, exception_type, exception_value, traceback):
+    def __exit__(self, exception_type: Optional[type], exception_value: Optional[BaseException],
+                 traceback: object) -> None:
         self.unlock()
 
-    def lock(self, override_timeout=None):
+    def lock(self, override_timeout: Optional[int] = None) -> None:
         cur_timeout = override_timeout if override_timeout is not None else self.timeout
         try:
             self.file = open(self.filename, 'a+')
@@ -70,7 +73,7 @@ class FileLocker(object):
                         safe_flock(self.file, fcntl.LOCK_EX)
                 except TimeoutException:
                     self._timeout_reached()
-                    raise Exception('Timeout reached')
+                    raise Exception('Timeout reached') from None
         except Exception:
             if self.file:
                 self.file.close()
@@ -80,7 +83,7 @@ class FileLocker(object):
         self._register_signal_handler()
         self._locked()
 
-    def unlock(self):
+    def unlock(self) -> None:
         file = self.file
         if not file:
             return
@@ -108,29 +111,31 @@ class FileLocker(object):
             self.file = None
             file.close()
 
-    def _make_filename(self, dir):
+    def _make_filename(self, dir: str) -> str:
         if self.lockname is not None:
             filename = self.lockname
         else:
             filename = '{}.lock'.format(os.path.basename(sys.argv[0]))
         return os.path.abspath(os.path.join(dir, filename))
 
-    def _handle_sigterm(self, signum, frame):
+    def _handle_sigterm(self, signum: int, frame: Optional[object]) -> None:
         self.unlock()
         raise SystemExit(1)
 
-    def _register_signal_handler(self):
-        self.previous_signal = signal.signal(signal.SIGTERM, partial(self._handle_sigterm, self))
+    def _register_signal_handler(self) -> None:
+        def handler(signum: int, frame: Optional[object]) -> None:
+            self._handle_sigterm(signum, frame)
+        self.previous_signal = signal.signal(signal.SIGTERM, handler)
 
-    def _unregister_signal_handler(self):
+    def _unregister_signal_handler(self) -> None:
         signal.signal(signal.SIGTERM, self.previous_signal)
         self.previous_signal = None
 
-    def _timeout_reached(self):
+    def _timeout_reached(self) -> None:
         pass
 
-    def _locked(self):
+    def _locked(self) -> None:
         pass
 
-    def _unlocked(self):
+    def _unlocked(self) -> None:
         pass

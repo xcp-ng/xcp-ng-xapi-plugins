@@ -1,9 +1,10 @@
 import json
+
 import mock
 import pytest
 import XenAPIPlugin
-
 from hyperthreading import get_hyperthreading
+
 
 @mock.patch('hyperthreading.run_command', autospec=True)
 class TestGetHyperthreading:

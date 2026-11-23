@@ -1,39 +1,35 @@
 import mock
 import pytest
-import XenAPIPlugin
-
-from sdncontroller import Parser, update_args_from_ovs, add_rule, del_rule, dump_flows
-
-from sdncontroller_test_cases.parser import (
-    BRIDGE_PARAMS,
-    BRIDGE_IDS,
-    MAC_PARAMS,
-    MAC_IDS,
-    IPRANGE_PARAMS,
-    IPRANGE_IDS,
-    DIRECTION_PARAMS,
-    DIRECTION_IDS,
-    PROTOCOL_PARAMS,
-    PROTOCOL_IDS,
-    PORT_PARAMS,
-    PORT_IDS,
-    ALLOW_PARAMS,
-    ALLOW_IDS,
-    PRIORITY_PARAMS,
-    PRIORITY_IDS,
-    COOKIE_PARAMS,
-    COOKIE_IDS,
-)
-
+from sdncontroller import Parser, add_rule, del_rule, dump_flows, update_args_from_ovs
 from sdncontroller_test_cases.functions import (
-    UPDATE_ARGS_PARAMS,
-    UPDATE_ARGS_IDS,
-    ADD_RULE_PARAMS,
     ADD_RULE_IDS,
-    DEL_RULE_PARAMS,
+    ADD_RULE_PARAMS,
     DEL_RULE_IDS,
-    DUMP_FLOWS_PARAMS,
+    DEL_RULE_PARAMS,
     DUMP_FLOWS_IDS,
+    DUMP_FLOWS_PARAMS,
+    UPDATE_ARGS_IDS,
+    UPDATE_ARGS_PARAMS,
+)
+from sdncontroller_test_cases.parser import (
+    ALLOW_IDS,
+    ALLOW_PARAMS,
+    BRIDGE_IDS,
+    BRIDGE_PARAMS,
+    COOKIE_IDS,
+    COOKIE_PARAMS,
+    DIRECTION_IDS,
+    DIRECTION_PARAMS,
+    IPRANGE_IDS,
+    IPRANGE_PARAMS,
+    MAC_IDS,
+    MAC_PARAMS,
+    PORT_IDS,
+    PORT_PARAMS,
+    PRIORITY_IDS,
+    PRIORITY_PARAMS,
+    PROTOCOL_IDS,
+    PROTOCOL_PARAMS,
 )
 
 

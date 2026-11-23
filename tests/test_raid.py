@@ -1,9 +1,9 @@
 import json
+import subprocess
+
 import mock
 import pytest
-import subprocess
 import XenAPIPlugin
-
 from raid import check_raid_pool
 
 MDADM_DETAIL_CMD = ['mdadm', '--detail', '/dev/md127']

@@ -1,0 +1,93 @@
+name: Release stripped artefacts
+
+# On tag push, produce the python 2.7 / 3.6 compatible source tarballs
+# (see scripts/convert_stripped.sh) and publish them as release assets.
+# The xcp-ng-xapi-plugins RPM for XCP-ng 8.3 consumes the 2.7 tarball
+# as its Source0. The artefacts are also checked here against the
+# interpreters of the XCP-ng hosts (2.7.5 / 3.6 on 8.3), so a broken
+# tag does not become an unfetchable release.
+
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+
+jobs:
+  stripped-artefacts:
+    runs-on: ubuntu-24.04
+    # The job publishes artefacts to the release, so it needs to write;
+    # this overrides the workflow-level "contents: read" default.
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v6
+
+    # The 8.3 runtime python is 2.7.5; python:2.7.9-slim is the closest
+    # image and is wrapped the same way as in the strip-compat job.
+    - name: Set up Python 2.7
+      run: |
+        sudo apt-get install podman
+        podman pull python:2.7.9-slim
+        cat >/usr/local/bin/python2.7 <<EOF
+        #!/bin/sh
+        set -eu
+        command -v podman >/dev/null 2>&1 || { echo "error: podman is required but was not found" >&2; exit 1; }
+        exec podman run --rm -v "\$(pwd)":\$(pwd) -w "\$(pwd)" python:2.7.9-slim python2.7 "\$@"
+        EOF
+        chmod 755 /usr/local/bin/python2.7
+
+    - name: Cache pyenv
+      id: pyenv-cache
+      uses: actions/cache@v4
+      with:
+        path: ~/.pyenv
+        key: pyenv-${{ runner.os }}-3.6.15-release
+
+    # GitHub's actions/setup-python has no python 3.6 build for the
+    # current runners, so install it with pyenv (compiles from source;
+    # restored from the cache above when available).
+    - name: Set up Python 3.6
+      if: steps.pyenv-cache.outputs.cache-hit != 'true'
+      uses: LizardByte/actions/actions/setup_python@v2026.1108.210022
+      with:
+        python-version: "3.6.15"
+        update-environment: false
+
+    - name: Use cached Python 3.6
+      if: steps.pyenv-cache.outputs.cache-hit == 'true'
+      run: |
+        test -x "$HOME/.pyenv/versions/3.6.15/bin/python3.6" || exit 1
+
+    - uses: actions/setup-python@v5
+      with:
+        python-version: "3.12"
+
+    - uses: astral-sh/setup-uv@v6
+
+    - name: Convert the sources
+      env:
+        TAG: ${{ github.event.ref_name }}
+      run: |
+        scripts/convert_stripped.sh all --version "${TAG#v}" --tar
+
+    - name: Check the stripped 2.7 artefact
+      run: |
+        /usr/local/bin/python2.7 -m compileall -q build/stripped/2.7/xcp-ng-xapi-plugins-*/SOURCES
+
+    - name: Check the stripped 3.6 artefact
+      run: |
+        "$HOME/.pyenv/versions/3.6.15/bin/python3.6" -m compileall -q build/stripped/3.6/xcp-ng-xapi-plugins-*/SOURCES
+
+    - name: Publish artefacts as release assets
+      # Pinned to a commit: this step runs with "contents: write", so a
+      # tampered or compromised action could replace the release artefacts
+      # (the tarball installed on every XCP-ng 8.3 host).
+      uses: softprops/action-gh-release@d5382d3e6f2fa7bd53cb749d33091853d4985daf # v2.3.0
+      with:
+        draft: false
+        generate_release_notes: true
+        files: |
+          build/stripped/xcp-ng-xapi-plugins-*-stripped-*.tar.gz
+          build/stripped/xcp-ng-xapi-plugins-*-stripped-*.tar.gz.sha256

@@ -1,16 +1,19 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-from functools import wraps
-import ConfigParser
 import json
-import yum
+from functools import wraps
 
 import XenAPIPlugin
+import yum
 
-from xcpngutils import configure_logging, run_command, error_wrapped
+try:
+    from ConfigParser import ConfigParser
+except ImportError:
+    from configparser import ConfigParser
+
+from xcpngutils import configure_logging, error_wrapped, run_command
 from xcpngutils.filelocker import FileLocker
-
 
 DEFAULT_REPOS = ('xcp-ng-base', 'xcp-ng-updates', 'xcp-ng-linstor')
 
@@ -124,7 +127,6 @@ def install_helper(session, args, action):
 
     task = None
     res = None
-    error = None
     try:
         host = session.xenapi.session.get_this_host(session.handle)
         host_name = session.xenapi.host.get_name_label(host)
@@ -142,14 +144,13 @@ def install_helper(session, args, action):
             command.append(packages)
         res = run_command(command)
         session.xenapi.task.set_status(task, 'success')
-    except Exception as e:
-        error = e
-    finally:
+    except Exception:
         if task:
             session.xenapi.task.destroy(task)
-        if error:
-            raise error
-        return json.dumps(res)
+        raise
+    if task:
+        session.xenapi.task.destroy(task)
+    return json.dumps(res)
 
 @error_wrapped
 @operationlock(timeout=10)
@@ -239,7 +240,7 @@ CONFIGURATION_FILE = '/etc/yum.repos.d/xcp-ng.repo'
 @error_wrapped
 @operationlock()
 def get_proxies(session, args):
-    config = ConfigParser.ConfigParser({'proxy': '_none_'})
+    config = ConfigParser({'proxy': '_none_'})
     config.read(CONFIGURATION_FILE)
     new_dict = dict((section, config.get(section, 'proxy', '_none_')) for section in config.sections())
     return json.dumps(new_dict)
@@ -257,7 +258,7 @@ def set_proxies(session, args):
     special_url_prefix = 'http://HTTPS///'
     https_url_prefix = 'https://'
     proxies = json.loads(args['proxies'])
-    config = ConfigParser.ConfigParser()
+    config = ConfigParser()
     if CONFIGURATION_FILE not in config.read(CONFIGURATION_FILE):
         raise Exception('could not read file %s' % CONFIGURATION_FILE)
 

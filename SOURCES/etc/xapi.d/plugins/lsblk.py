@@ -6,7 +6,7 @@ import re
 
 import XenAPIPlugin
 
-from xcpngutils import run_command, error_wrapped
+from xcpngutils import error_wrapped, run_command
 
 LSBLK_COLUMNS = "NAME,KNAME,PKNAME,SIZE,TYPE,RO,MOUNTPOINT"
 # Filtering disk/by-{something}/ results

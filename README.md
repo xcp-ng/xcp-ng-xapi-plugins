@@ -2,6 +2,105 @@
 
 This repo hosts all the extra plugins installed in a XCP-ng host in `/etc/xapi.d/plugins`.
 
+## Development
+
+The sources must stay compatible with the oldest python the plugins run
+on: **python 2.7** and **3.6** on XCP-ng 8.3 (the 8.3 RPM is built with
+python 2.7 compatible sources) and **python 3.12** on XCP-ng 9.0. The
+code is written with type annotations; for XCP-ng 8.3 the annotations
+are removed and the syntax downgraded by `strip-python3` at release
+time (the RPM installs the converted sources), while the test suite and
+linters run on the annotated source.
+
+All tooling is managed with [uv](https://docs.astral.sh/uv/). A system
+python 3.6 interpreter must be present (uv cannot install python 3.6);
+the python 3.12 used by `strip-python3` is selected by uv itself.
+
+### Run the tests
+
+```bash
+# with the default (latest) python
+uv sync --group test && uv run pytest
+
+# with the XCP-ng python versions (each fail if the interpreter is absent)
+scripts/run_tests.sh 3.6
+scripts/run_tests.sh 3.12
+scripts/run_tests.sh all
+```
+
+### Lint and type check
+
+```bash
+uv sync --group lint
+
+uv run ruff check .                                  # linter
+uv run autopep8 -r --diff --max-line-length 120 SOURCES tests  # formatting (no diff = OK)
+uv run flake8 SOURCES tests
+uv run pydocstyle
+uv run pyright                                       # type check (xcpngutils, py3.6)
+```
+
+`ruff` and `flake8` use the same pycodestyle line length (120) and ignore
+list as the previous configuration. `pyright` is scoped to the shared
+`xcpngutils` package for now; widen `include` in `pyproject.toml` as the
+individual plugins get typed.
+
+### Compatibility check
+
+The RPM installs the output of `strip-python3`, so the sources must not
+use syntax newer than python 3.6. This strips the sources and verifies
+the result compiles with the XCP-ng 8.3 interpreters (python 2.7 and
+3.6; each is required, `PYTHON27` / `PYTHON36` point to interpreters
+not on the path):
+
+```bash
+scripts/check_stripped_compat.sh 2.7
+scripts/check_stripped_compat.sh 3.6
+scripts/check_stripped_compat.sh all
+```
+
+### Writing typed code
+
+- Use python 3.6 compatible typing only: `typing.Optional`, `typing.List`,
+  `typing.Dict`, `typing.Callable`, etc. Do **not** use PEP 585 builtins
+  (`list[str]`) or PEP 604 unions (`str | None`) in the shipped sources.
+- Keep the code free of syntax newer than python 3.6 (no walrus `:=`, no
+  `str.removeprefix`, etc.); the compatibility check enforces this.
+
+### Preparing a release
+
+`strip-python3` needs python 3.9+ to run (uv selects 3.12 itself via
+`uv run`), but the XCP-ng 8.3 RPM build environment only has python 3.6:
+the conversion is therefore done **before** the release, in this
+repository, and the stripped tarball is published as a GitHub release
+asset.
+
+```bash
+# 1. merge the release branch and tag it, e.g. v1.19.0
+git tag v1.19.0 && git push origin v1.19.0
+
+# 2. the push triggers the release workflow, which converts the
+#    sources and publishes as release assets:
+#      xcp-ng-xapi-plugins-1.19.0-stripped-2.7.tar.gz  (consumed by the RPM)
+#      xcp-ng-xapi-plugins-1.19.0-stripped-3.6.tar.gz  (for reference)
+#    plus a .sha256 for each artefact
+
+# 3. feed the 2.7 tarball to the xcp-ng-xapi-plugins RPM package
+#    (SOURCES/ + spec Source0, see the rpms repository)
+```
+
+The conversion itself can also be run locally (needs `uv`):
+
+```bash
+scripts/convert_stripped.sh all --version 1.19.0 --tar
+# trees land in build/stripped/<target>/, tarballs in build/stripped/
+```
+
+The compatibility check and the release artefacts use the very same
+conversion (`scripts/convert_stripped.sh`), so a green CI check means
+the shipped artefact compiles on 8.3.
+
+  
 ## Return format
 
 A plugin should respect this return format:
@@ -445,15 +544,4 @@ $ xe host-call-plugin host-uuid=<uuid> plugin=sdncontroller.py args:bridge=xenbr
   "stderr": "ovs-ofctl: xenbr10 is not a bridge or a socket\n",
   "stdout": ""
 }
-```
-
-## Tests
-
-Install the test dependencies:
-```bash
-pip install --group test
-```
-and run the tests:
-```bash
-pytest
 ```
