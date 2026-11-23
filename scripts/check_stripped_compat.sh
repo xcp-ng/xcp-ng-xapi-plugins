@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 # The sources must remain installable on XCP-ng 8.3, where the plugins run
-# with python 2.7 (3.6 is also available). At install time, strip-python3
-# removes the type annotations and downgrades the syntax. This check runs
-# that transformation and verifies the result compiles with python 2.7
-# and/or 3.6.
+# with python 2.7 (3.6 is also available). This check runs the same
+# conversion the release process uses (scripts/convert_stripped.sh, i.e.
+# strip-python3 removing the type annotations and downgrading the syntax)
+# and verifies the result compiles with python 2.7 and/or 3.6.
 
 set -eu
 
@@ -20,8 +20,6 @@ case "$VERSION" in
     2.7|3.6|all) ;;
     *)    usage ;;
 esac
-
-srcdir="SOURCES/etc/xapi.d/plugins"
 
 tmpdirs=()
 cleanup() {
@@ -58,13 +56,10 @@ run_one() {
     tmpdir="$(mktemp -d)"
     tmpdirs+=("$tmpdir")
 
-    mkdir -p "$tmpdir/xcpngutils"
-    for f in "$srcdir"/*.py; do
-        uv run strip-python3 -P $version -n -o "$tmpdir/$(basename "$f")" "$f" || return 1
-    done
-    for f in "$srcdir"/xcpngutils/*.py; do
-        uv run strip-python3 -P $version -n -o "$tmpdir/xcpngutils/$(basename "$f")" "$f" || return 1
-    done
+    # Same conversion as the release artefacts (see
+    # scripts/convert_stripped.sh); the version is irrelevant here, it
+    # only names the top directory of the tree.
+    "$(dirname "$0")/convert_stripped.sh" "$version" --version check --outdir "$tmpdir" || return 1
 
     "$python" -m compileall -q "$tmpdir"
     echo "OK: stripped sources compile with python $version"
