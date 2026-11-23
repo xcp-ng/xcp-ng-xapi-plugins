@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xcp-ng-xapi-plugins"
-version = "1.16.0"
+version = "1.19.0"
 requires-python = ">=3.6"
 authors = [{name = "XCP-ng maintainers"}]
 maintainers = [{name = "XCP-ng maintainers"}]

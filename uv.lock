@@ -1132,7 +1132,7 @@ wheels = [
 
 [[package]]
 name = "xcp-ng-xapi-plugins"
-version = "1.16.0"
+version = "1.19.0"
 source = { virtual = "." }
 
 [package.dev-dependencies]
